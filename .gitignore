@@ -1,0 +1,34 @@
+# Gradle / Android Studio
+.gradle/
+build/
+/app/build/
+.idea/
+*.iml
+.kotlin/
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+
+# Segredos e assinatura — nunca versionar
+*.jks
+*.keystore
+keystore.properties
+secrets.properties
+*.env
+.env*
+google-services.json
+
+# Artefatos e dados locais
+*.apk
+*.aab
+*.db
+*.db-shm
+*.db-wal
+*.preferences_pb
+*.log
+*.hprof
+
+# Sistema
+.DS_Store
+Thumbs.db

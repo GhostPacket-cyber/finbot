@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Cifrão estilizado em três barras crescentes -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,64h8v12h-8z M50,52h8v24h-8z M64,40h8v36h-8z" />
+</vector>
