@@ -1,34 +1,35 @@
 # FinBot
 
-Bot Telegram de finanças pessoais hospedado em um celular Android, para no máximo dois usuários autorizados. Os dados ficam em SQLite local, no próprio aparelho.
+App Android de finanças pessoais com assistente por chat (texto e, futuramente, áudio). Cada pessoa usa no próprio celular, e os dados ficam só no aparelho, em SQLite local, sem conta online nem nuvem.
 
-> Estado atual: **ETAPA 01** — APK com tela administrativa e diagnóstico. Ainda não conversa com o Telegram (ETAPA 03).
+> Estado atual: **v2 · ETAPA 01** — onboarding, navegação com abas e Ajustes. O chat chega na ETAPA 03. Contrato: `../Prompt/FINBOT_PROMPT_MESTRE_V2.md`.
 
 ## Requisitos de desenvolvimento
 - Android Studio recente (o JDK de build é o JBR embutido; o AGP 9.4 exige JDK 17+).
-- Android SDK Platform **37** e Build-Tools 36 (instale pelo SDK Manager se o Studio não instalar sozinho).
-- Aparelho com Android 8.0+ (alvo: Android 14+).
+- Android SDK Platform **37** e Build-Tools 36.
+- Aparelho com Android 8.0+ (alvo testado: Android 16).
 
-## Instalar pelo Android Studio
-1. Instale o Android Studio (`winget install Google.AndroidStudio`), abra-o uma vez e conclua o assistente, aceitando as licenças do SDK.
-2. *File > Open* → pasta `FinBot`. Aguarde o *Gradle Sync*.
-3. No celular: *Configurações > Sobre o telefone* → toque 7 vezes em "Número da versão" para habilitar as Opções do desenvolvedor → ative **Depuração USB**.
-4. Conecte o celular por USB, autorize o computador e clique em **Run ▶** com o módulo `app` selecionado.
+## Instalar no celular
+1. Abra a pasta `FinBot` no Android Studio e aguarde o *Gradle Sync*.
+2. No celular, ative as **Opções do desenvolvedor** (toque 7 vezes em "Número da versão" ou, no HyperOS, em "Versão do SO") e ative **Depuração USB**.
+3. Conecte por USB, autorize o computador e clique em **Run ▶**.
 
-Pela linha de comando (com o `JAVA_HOME` apontando para o JBR do Studio):
+Pela linha de comando:
 ```bash
 ./gradlew assembleDebug
 ```
 O APK fica em `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Identificar a versão do Android e as restrições de bateria
-- **Versão:** *Configurações > Sobre o telefone > Informações do software*, ou o cartão "Diagnóstico do aparelho" do próprio app (mostra versão, API e fabricante).
-- **Otimização de bateria:** o cartão de diagnóstico informa se o FinBot está restrito. O botão "Ajustes de bateria" abre a tela do sistema; escolha "Sem restrições" para o FinBot.
-- Fabricantes como Samsung, Xiaomi, Motorola e outros têm gerenciadores próprios ("Apps em suspensão", "Inicialização automática"). Consulte https://dontkillmyapp.com para o seu modelo.
-- Mesmo com esses ajustes, **não há garantia de execução 24/7**.
+### Xiaomi / POCO / Redmi (HyperOS, MIUI)
+- Ative também **Instalar via USB** (exige conta Mi e, às vezes, dados móveis) e **Depuração USB (Configurações de segurança)**.
+- Se a instalação falhar com `INSTALL_FAILED_USER_RESTRICTED`, desative a verificação de apps antes de instalar em *Segurança → ⚙ → Verificação de segurança*. Religue depois, se quiser.
+
+## Bateria e lembretes
+- O cartão "Diagnóstico do aparelho" em Ajustes mostra a versão do Android e se o FinBot sofre otimização de bateria. O botão "Ajustes de bateria" abre a tela do sistema.
+- Os lembretes (ETAPA 06) podem atrasar com a otimização ativa. Consulte https://dontkillmyapp.com para o seu modelo.
 
 ## Documentação
 - `docs/DECISIONS.md`: versões e decisões técnicas.
-- `docs/SECURITY.md`: segredos, logs e backup.
+- `docs/SECURITY.md`: segredos, logs, permissões e backup.
 - `docs/TEST_PLAN.md`: testes automatizados e manuais.
 - `docs/PROGRESS.md`: andamento por etapa.

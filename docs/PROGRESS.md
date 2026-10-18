@@ -1,6 +1,39 @@
 # Progresso
 
-> **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007. Próximo passo: transição da ETAPA 01 (v2).
+> **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007.
+
+## v2 · ETAPA 01 — Transição para app isolado
+
+**Status:** **concluída.** Build ok, 21/21 testes JVM, lint com 0 erros, 7/7 testes instrumentados e testes manuais verificados no POCO X7 Pro (Android 16, HyperOS 3.0).
+
+### Feito
+- **Removido:** token e fluxo do bot de mensagens, IDs autorizados, card de status, `BotController`, `BotState`, canal de notificação e `POST_NOTIFICATIONS` (volta na ETAPA 06). O manifesto ficou **sem nenhuma permissão**.
+- **Limpeza de legado** ao abrir o app: apaga o segredo cifrado da v1, os IDs antigos e `finbot_state.preferences_pb`. Os únicos nomes antigos que restam no código são as chaves usadas nessa limpeza.
+- **Navegação** com barra inferior: Chat, Lançamentos, Contas, Relatórios e Ajustes. As abas não implementadas mostram "Em breve (ETAPA N)", sem dados fictícios.
+- **Onboarding** de primeira execução: boas-vindas, aviso de privacidade, nome opcional e fuso.
+- **Ajustes:** perfil (nome e fuso), IA (consentimento e chave Gemini mascarada), diagnóstico e Sobre (versão via `BuildConfig`).
+- `DeviceDiagnostics` movido para o pacote `diagnostics`. `versionName` = `0.2.0-v2-etapa01`.
+
+### Comandos e resultados
+| Comando | Resultado |
+|---|---|
+| `gradlew assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug` | BUILD SUCCESSFUL, sem warnings do Kotlin |
+| testes JVM | **21/21**: ConfigValidator 5, ConfigRepository 4, SecretStore 7, LogSanitizer 5 |
+| lint | 0 erros, 1 aviso (`OldTargetApi`, ADR-002) |
+| `adb install -r` sobre a v1 (0.1.0 → 0.2.0) | abriu sem crash; a v1 do aparelho não tinha dados gravados, então a limpeza de legado foi validada só nos testes JVM |
+| `am instrument` | **7/7**: KeystoreSecretCipher 4, MainScreen 3 |
+
+### Testes manuais (2026-10-17)
+| # | Verificação | Resultado |
+|---|---|---|
+| 1–2 | Onboarding e abas com "Em breve" | ok (relatado pelo usuário e confirmado pela árvore de UI via `uiautomator dump`) |
+| 3–5 | Salvar nome, chave e consentimento | Na sessão do usuário, **nada foi gravado**: o log não teve "Ajustes salvos", e o DataStore só tinha o onboarding. Reproduzido via ADB (`input tap`/`input text`): "Ajustes salvos", status `Configurada (•••• efgh)`, diálogo de consentimento e data registrados. Causa da divergência não identificada. Refazer pelo toque na próxima etapa |
+| 6 | Persistência após `am force-stop` | ok: nome, fuso, consentimento com data e chave mascarada mantidos |
+| 7 | Logcat sem segredos | O FinBot não registrou a chave. Uma ocorrência veio do `adbd` (registro do comando `adb shell input text`, artefato do teste). `finbot_secrets` não contém o valor em claro |
+| 8 | FLAG_SECURE | `screencap` sai preto (4 de 400 pixels amostrados não pretos, provavelmente da barra de status) |
+
+### Observações
+- O HyperOS registra eventos de tecla injetados (`MiuiInputKeyEventLog`). Isso foge ao controle do app; teclados virtuais normalmente não geram esses eventos.
 
 ## Execução no aparelho (2026-10-17)
 - Aparelho: POCO X7 Pro (2412DPC0AG), Android 16 (API 36), HyperOS OS3.0.

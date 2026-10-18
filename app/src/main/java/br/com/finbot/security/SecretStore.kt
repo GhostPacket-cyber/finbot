@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.map
 import java.util.Base64
 
 enum class SecretKind(val storageKey: String) {
-    TELEGRAM_BOT_TOKEN("telegram_bot_token"),
     GEMINI_API_KEY("gemini_api_key"),
 }
 
@@ -50,6 +49,11 @@ class SecretStore(
         dataStore.edit { it.remove(keyOf(kind)) }
     }
 
+    /** Apaga segredos de versões anteriores (v1) que não existem mais em [SecretKind]. */
+    suspend fun removeLegacy() {
+        dataStore.edit { prefs -> LEGACY_KEYS.forEach { prefs.remove(stringPreferencesKey(it)) } }
+    }
+
     /** Valor em claro para uso interno (clientes HTTP). Retorna null se ausente ou ilegível. */
     suspend fun get(kind: SecretKind): String? =
         dataStore.data.first()[keyOf(kind)]?.let { runCatching { decode(it) }.getOrNull() }
@@ -64,4 +68,8 @@ class SecretStore(
         String(cipher.decrypt(Base64.getDecoder().decode(encoded)), Charsets.UTF_8)
 
     private fun keyOf(kind: SecretKind) = stringPreferencesKey(kind.storageKey)
+
+    private companion object {
+        val LEGACY_KEYS = listOf("telegram_bot_token")
+    }
 }

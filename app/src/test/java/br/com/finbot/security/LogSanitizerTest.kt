@@ -7,15 +7,7 @@ import org.junit.Test
 
 class LogSanitizerTest {
 
-    private val fakeToken = "123456789:AAFakeTokenValue_ForTests-0123456789ab"
     private val fakeGoogleKey = "AIza" + "B".repeat(35)
-
-    @Test
-    fun `remove token do telegram em texto e url`() {
-        val out = LogSanitizer.sanitize("GET https://api.telegram.org/bot$fakeToken/getUpdates falhou; token=$fakeToken")
-        assertFalse(out.contains(fakeToken))
-        assertTrue(out.contains("[TOKEN_REMOVIDO]"))
-    }
 
     @Test
     fun `remove chave google e parametros sensiveis`() {
@@ -33,8 +25,15 @@ class LogSanitizerTest {
     }
 
     @Test
+    fun `remove parametro token`() {
+        val out = LogSanitizer.sanitize("GET /arquivo?token=abc123segredo&x=1")
+        assertFalse(out.contains("abc123segredo"))
+        assertTrue(out.contains("x=1"))
+    }
+
+    @Test
     fun `texto sem segredo permanece igual`() {
-        assertEquals("Configuração salva", LogSanitizer.sanitize("Configuração salva"))
+        assertEquals("Ajustes salvos", LogSanitizer.sanitize("Ajustes salvos"))
     }
 
     @Test

@@ -1,5 +1,7 @@
 package br.com.finbot.security
 
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import br.com.finbot.testutil.FakeCipher
 import br.com.finbot.testutil.FileDataStoreHandle
 import kotlinx.coroutines.flow.first
@@ -17,7 +19,8 @@ class SecretStoreTest {
     @get:Rule
     val tmp = TemporaryFolder()
 
-    private val token = "123456789:AAFakeTokenValue_ForTests-0123456789ab"
+    // Valor sintético; não é uma chave real.
+    private val key = "chave-sintetica-de-teste-0123456789wxyz"
 
     @Test
     fun `segredo e salvo cifrado e lido de volta`() = runTest {
@@ -25,24 +28,24 @@ class SecretStoreTest {
         val handle = FileDataStoreHandle(file)
         val store = SecretStore(handle.dataStore, FakeCipher())
 
-        store.put(SecretKind.TELEGRAM_BOT_TOKEN, "  $token  ")
+        store.put(SecretKind.GEMINI_API_KEY, "  $key  ")
 
-        assertEquals(token, store.get(SecretKind.TELEGRAM_BOT_TOKEN))
+        assertEquals(key, store.get(SecretKind.GEMINI_API_KEY))
         handle.close()
-        assertFalse("arquivo não pode conter o segredo em claro", file.readBytes().toString(Charsets.ISO_8859_1).contains(token))
+        assertFalse("arquivo não pode conter o segredo em claro", file.readBytes().toString(Charsets.ISO_8859_1).contains(key))
     }
 
     @Test
     fun `status mostra apenas dica mascarada`() = runTest {
         val handle = FileDataStoreHandle(tmp.newFolder().resolve("s.preferences_pb"))
         val store = SecretStore(handle.dataStore, FakeCipher())
-        store.put(SecretKind.TELEGRAM_BOT_TOKEN, token)
+        assertEquals(SecretStatus.Missing, store.statuses.first()[SecretKind.GEMINI_API_KEY])
 
-        val statuses = store.statuses.first()
-        val status = statuses[SecretKind.TELEGRAM_BOT_TOKEN] as SecretStatus.Configured
-        assertEquals("•••• 89ab", status.hint)
-        assertFalse(status.hint.contains(token.dropLast(4)))
-        assertEquals(SecretStatus.Missing, statuses[SecretKind.GEMINI_API_KEY])
+        store.put(SecretKind.GEMINI_API_KEY, key)
+
+        val status = store.statuses.first()[SecretKind.GEMINI_API_KEY] as SecretStatus.Configured
+        assertEquals("•••• wxyz", status.hint)
+        assertFalse(status.hint.contains(key.dropLast(4)))
         handle.close()
     }
 
@@ -50,11 +53,11 @@ class SecretStoreTest {
     fun `segredo persiste apos reabrir o datastore`() = runTest {
         val file = tmp.newFolder().resolve("p.preferences_pb")
         val first = FileDataStoreHandle(file)
-        SecretStore(first.dataStore, FakeCipher()).put(SecretKind.GEMINI_API_KEY, "chave-gemini-de-teste-123456")
+        SecretStore(first.dataStore, FakeCipher()).put(SecretKind.GEMINI_API_KEY, key)
         first.close()
 
         val second = FileDataStoreHandle(file)
-        assertEquals("chave-gemini-de-teste-123456", SecretStore(second.dataStore, FakeCipher()).get(SecretKind.GEMINI_API_KEY))
+        assertEquals(key, SecretStore(second.dataStore, FakeCipher()).get(SecretKind.GEMINI_API_KEY))
         second.close()
     }
 
@@ -62,10 +65,10 @@ class SecretStoreTest {
     fun `remover apaga o segredo`() = runTest {
         val handle = FileDataStoreHandle(tmp.newFolder().resolve("r.preferences_pb"))
         val store = SecretStore(handle.dataStore, FakeCipher())
-        store.put(SecretKind.TELEGRAM_BOT_TOKEN, token)
-        store.remove(SecretKind.TELEGRAM_BOT_TOKEN)
-        assertNull(store.get(SecretKind.TELEGRAM_BOT_TOKEN))
-        assertEquals(SecretStatus.Missing, store.statuses.first()[SecretKind.TELEGRAM_BOT_TOKEN])
+        store.put(SecretKind.GEMINI_API_KEY, key)
+        store.remove(SecretKind.GEMINI_API_KEY)
+        assertNull(store.get(SecretKind.GEMINI_API_KEY))
+        assertEquals(SecretStatus.Missing, store.statuses.first()[SecretKind.GEMINI_API_KEY])
         handle.close()
     }
 
@@ -74,11 +77,26 @@ class SecretStoreTest {
         val cipher = FakeCipher()
         val handle = FileDataStoreHandle(tmp.newFolder().resolve("u.preferences_pb"))
         val store = SecretStore(handle.dataStore, cipher)
-        store.put(SecretKind.TELEGRAM_BOT_TOKEN, token)
+        store.put(SecretKind.GEMINI_API_KEY, key)
         cipher.failDecrypt = true
 
-        assertEquals(SecretStatus.Unreadable, store.statuses.first()[SecretKind.TELEGRAM_BOT_TOKEN])
-        assertNull(store.get(SecretKind.TELEGRAM_BOT_TOKEN))
+        assertEquals(SecretStatus.Unreadable, store.statuses.first()[SecretKind.GEMINI_API_KEY])
+        assertNull(store.get(SecretKind.GEMINI_API_KEY))
+        handle.close()
+    }
+
+    @Test
+    fun `segredos legados da v1 sao apagados e o atual permanece`() = runTest {
+        val handle = FileDataStoreHandle(tmp.newFolder().resolve("l.preferences_pb"))
+        val legacyKey = stringPreferencesKey("telegram_bot_token")
+        handle.dataStore.edit { it[legacyKey] = "blob-cifrado-antigo" }
+        val store = SecretStore(handle.dataStore, FakeCipher())
+        store.put(SecretKind.GEMINI_API_KEY, key)
+
+        store.removeLegacy()
+
+        assertNull(handle.dataStore.data.first()[legacyKey])
+        assertEquals(key, store.get(SecretKind.GEMINI_API_KEY))
         handle.close()
     }
 

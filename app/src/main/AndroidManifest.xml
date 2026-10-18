@@ -2,8 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- ETAPA 01: somente notificações. INTERNET e FOREGROUND_SERVICE entram na ETAPA 03. -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Sem permissões nesta fase. INTERNET entra com o Gemini (ETAPA 04),
+         RECORD_AUDIO com o áudio (ETAPA 04) e POST_NOTIFICATIONS com os lembretes (ETAPA 06). -->
 
     <application
         android:name=".FinBotApp"

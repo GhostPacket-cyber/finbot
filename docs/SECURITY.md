@@ -1,25 +1,29 @@
 # Segurança — FinBot
 
-Documento vivo; o modelo de ameaças completo entra na ETAPA 08.
+Documento vivo; o modelo de ameaças completo entra na ETAPA 11 (v2).
 
 ## Segredos
-- O token do bot Telegram e a chave Gemini são informados **somente no aparelho**, pela tela administrativa. Nunca entram no código-fonte, no Git, no APK nem em logs.
-- Ficam cifrados com AES-256-GCM, com chave não exportável no Android Keystore (`security/SecretCipher.kt`), dentro do diretório privado do app.
+- A chave da Gemini API (opcional) é informada **somente no aparelho**, em Ajustes. Nunca entra no código-fonte, no Git, no APK nem em logs.
+- Fica cifrada com AES-256-GCM, com chave não exportável no Android Keystore (`security/SecretCipher.kt`), dentro do diretório privado do app.
 - A UI mostra no máximo os 4 últimos caracteres (`•••• abcd`) e permite substituir ou remover.
-- **Limitação:** chaves guardadas no cliente não são invioláveis. Root, malware com privilégios ou depuração no aparelho podem obtê-las. Se houver suspeita de vazamento, revogue o token no @BotFather (`/revoke`) e a chave no Google AI Studio, e cadastre novos valores.
+- **Limitação:** chaves guardadas no cliente não são invioláveis. Root, malware com privilégios ou depuração no aparelho podem obtê-las. Se houver suspeita de vazamento, revogue a chave no Google AI Studio e cadastre outra.
+- Atualizar a partir da v1 apaga automaticamente o segredo e os IDs da versão anterior (`FinBotApp.removeLegacyData`).
 
 ## Logs
 - `SafeLog` registra apenas eventos técnicos. Para exceções, registra só o tipo, nunca a mensagem.
-- `LogSanitizer` remove como rede de segurança: tokens do Telegram (inclusive em URLs `bot<token>`), chaves `AIza…`, `x-goog-api-key`, `Bearer` e parâmetros `key=`/`token=`.
-- Proibido registrar conteúdo de mensagens, áudios, valores financeiros ou nomes de usuário.
+- `LogSanitizer` remove como rede de segurança: chaves `AIza…`, `x-goog-api-key`, `Bearer` e parâmetros `key=`/`token=`.
+- Proibido registrar conteúdo de mensagens, áudios, valores financeiros ou o nome do usuário.
+
+## Permissões
+- Nenhuma permissão declarada na v2 · ETAPA 01. Cada uma entra só na etapa que a usa, com justificativa.
 
 ## Backup e exportação
 - O backup automático do Android (nuvem e transferência entre aparelhos) está desativado.
-- Desinstalar o app ou limpar seus dados apaga tudo. O backup manual criptografado entra na ETAPA 08.
+- Desinstalar o app ou limpar seus dados apaga tudo. A exportação e importação criptografadas entram na ETAPA 11.
 
 ## Tela
-- `FLAG_SECURE` impede capturas de tela da área administrativa.
+- `FLAG_SECURE` em toda a `MainActivity` impede capturas de tela; vira configurável na ETAPA 11.
 
 ## Dados enviados a terceiros
-- Telegram e Gemini processam mensagens em servidores externos: arquitetura local-first não é offline.
-- O envio ao Gemini exige consentimento explícito registrado na tela (só a opção e a data são armazenadas).
+- Nenhum por enquanto: o app não declara INTERNET.
+- A partir da ETAPA 04, só se o usuário consentir, a mensagem atual é enviada à Gemini API (Google). O consentimento armazena apenas a opção e a data.

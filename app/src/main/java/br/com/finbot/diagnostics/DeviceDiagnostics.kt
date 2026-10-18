@@ -1,12 +1,9 @@
-package br.com.finbot.service
+package br.com.finbot.diagnostics
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.PowerManager
 import android.os.StatFs
-import androidx.core.content.ContextCompat
 import br.com.finbot.security.SafeLog
 import java.io.File
 import java.io.IOException
@@ -19,7 +16,6 @@ data class DeviceInfo(
     val manufacturer: String,
     val model: String,
     val ignoringBatteryOptimizations: Boolean,
-    val notificationsAllowed: Boolean,
 )
 
 class DeviceDiagnostics(private val context: Context) {
@@ -46,16 +42,12 @@ class DeviceDiagnostics(private val context: Context) {
 
     fun deviceInfo(): DeviceInfo {
         val power = context.getSystemService(PowerManager::class.java)
-        val notificationsAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
-            PackageManager.PERMISSION_GRANTED
         return DeviceInfo(
             androidVersion = Build.VERSION.RELEASE,
             sdkInt = Build.VERSION.SDK_INT,
             manufacturer = Build.MANUFACTURER,
             model = Build.MODEL,
             ignoringBatteryOptimizations = power.isIgnoringBatteryOptimizations(context.packageName),
-            notificationsAllowed = notificationsAllowed,
         )
     }
 

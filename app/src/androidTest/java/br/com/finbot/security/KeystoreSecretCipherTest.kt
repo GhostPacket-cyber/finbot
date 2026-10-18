@@ -13,7 +13,7 @@ class KeystoreSecretCipherTest {
 
     private val alias = "finbot_test_key"
     private val cipher = KeystoreSecretCipher(alias)
-    private val plain = "123456789:AAFakeTokenValue_ForTests-0123456789ab".toByteArray()
+    private val plain = "chave-sintetica-de-teste-0123456789wxyz".toByteArray()
 
     @After
     fun deleteKey() {

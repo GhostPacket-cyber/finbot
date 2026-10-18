@@ -57,6 +57,13 @@ O serviço Telegram só existe a partir da ETAPA 03. `NotImplementedBotControlle
 
 As libs AndroidX traziam `kotlinx-coroutines-core` 1.9.0, enquanto o `kotlinx-coroutines-test` 1.11.0 dos testes instrumentados exigia 1.11 (`NoSuchMethodError: runBlockingK`). O app declara `kotlinx-coroutines-android` 1.11.0 explicitamente, porque também usa coroutines diretamente.
 
+## ADR-009 — Navegação por estado e ícones próprios (v2 · ETAPA 01)
+
+- A barra inferior com 5 abas é controlada por `rememberSaveable`, sem Navigation Compose. Ainda não há rotas com argumentos nem *deep links*; reavaliar na ETAPA 05.
+- Os ícones das abas são vetores XML próprios, para evitar `material-icons-extended`, que é pesada.
+- `buildConfig = true` para exibir a versão em "Sobre".
+- Permissões só entram na etapa que as usa: INTERNET e RECORD_AUDIO na 04, POST_NOTIFICATIONS na 06.
+
 ## ADR-006 — Proteção da tela administrativa
 
 `FLAG_SECURE` na `MainActivity` impede screenshots, gravação de tela e a miniatura em "Recentes" da tela que recebe credenciais. Os campos de segredo usam máscara de senha, teclado sem autocorreção, e são limpos após salvar.

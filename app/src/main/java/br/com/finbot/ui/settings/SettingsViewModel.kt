@@ -1,4 +1,4 @@
-package br.com.finbot.ui
+package br.com.finbot.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -8,16 +8,15 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import br.com.finbot.AppContainer
 import br.com.finbot.FinBotApp
-import br.com.finbot.config.AdminConfig
+import br.com.finbot.config.AppConfig
 import br.com.finbot.config.ConfigErrors
 import br.com.finbot.config.ConfigForm
 import br.com.finbot.config.ConfigValidator
+import br.com.finbot.diagnostics.DeviceInfo
+import br.com.finbot.diagnostics.StorageHealth
 import br.com.finbot.security.SafeLog
 import br.com.finbot.security.SecretKind
 import br.com.finbot.security.SecretStatus
-import br.com.finbot.service.BotState
-import br.com.finbot.service.DeviceInfo
-import br.com.finbot.service.StorageHealth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,29 +30,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
 
-data class AdminUiState(
+data class SettingsUiState(
     val form: ConfigForm = ConfigForm(),
     val errors: ConfigErrors = ConfigErrors(),
-    val config: AdminConfig = AdminConfig(),
-    val secrets: Map<SecretKind, SecretStatus> = emptyMap(),
-    val botState: BotState = BotState(),
+    val config: AppConfig = AppConfig(),
+    val geminiStatus: SecretStatus = SecretStatus.Missing,
     val storage: StorageHealth? = null,
     val device: DeviceInfo? = null,
     val saving: Boolean = false,
     val message: String? = null,
-) {
-    val telegramStatus: SecretStatus get() = secrets[SecretKind.TELEGRAM_BOT_TOKEN] ?: SecretStatus.Missing
-    val geminiStatus: SecretStatus get() = secrets[SecretKind.GEMINI_API_KEY] ?: SecretStatus.Missing
-
-    /** Requisitos mínimos para iniciar o bot: token legível e ao menos um usuário salvo. */
-    val canStart: Boolean
-        get() = telegramStatus is SecretStatus.Configured && config.authorizedUserIds.isNotEmpty()
-}
-
-private data class Persisted(
-    val config: AdminConfig,
-    val secrets: Map<SecretKind, SecretStatus>,
-    val botState: BotState,
 )
 
 private data class Transient(
@@ -63,43 +48,35 @@ private data class Transient(
     val message: String? = null,
 )
 
-class AdminViewModel(private val container: AppContainer) : ViewModel() {
+class SettingsViewModel(private val container: AppContainer) : ViewModel() {
 
     private val form = MutableStateFlow(ConfigForm())
     private val errors = MutableStateFlow(ConfigErrors())
     private val transient = MutableStateFlow(Transient())
 
-    private val persisted = combine(
+    val uiState: StateFlow<SettingsUiState> = combine(
+        form,
+        errors,
         container.configRepository.config,
         container.secretStore.statuses,
-        container.botStateRepository.state,
-        ::Persisted,
-    )
-
-    val uiState: StateFlow<AdminUiState> = combine(form, errors, persisted, transient) { f, e, p, t ->
-        AdminUiState(
+        transient,
+    ) { f, e, config, secrets, t ->
+        SettingsUiState(
             form = f,
             errors = e,
-            config = p.config,
-            secrets = p.secrets,
-            botState = p.botState,
+            config = config,
+            geminiStatus = secrets[SecretKind.GEMINI_API_KEY] ?: SecretStatus.Missing,
             storage = t.storage,
             device = t.device,
             saving = t.saving,
             message = t.message,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AdminUiState())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     init {
         viewModelScope.launch {
             val saved = container.configRepository.config.first()
-            form.update {
-                it.copy(
-                    user1Id = saved.authorizedUserIds.getOrNull(0)?.toString().orEmpty(),
-                    user2Id = saved.authorizedUserIds.getOrNull(1)?.toString().orEmpty(),
-                    timezone = saved.timezone,
-                )
-            }
+            form.update { it.copy(displayName = saved.displayName, timezone = saved.timezone) }
         }
     }
 
@@ -109,35 +86,28 @@ class AdminViewModel(private val container: AppContainer) : ViewModel() {
 
     fun save() {
         if (transient.value.saving) return
+        val current = form.value
+        val validation = ConfigValidator.validate(current)
+        errors.value = validation
+        if (validation.hasErrors) {
+            showMessage("Corrija os campos destacados.")
+            return
+        }
         viewModelScope.launch {
-            val hasToken = container.secretStore.statuses.first()[SecretKind.TELEGRAM_BOT_TOKEN] is SecretStatus.Configured
-            val current = form.value
-            val validation = ConfigValidator.validate(current, hasToken)
-            errors.value = validation
-            if (validation.hasErrors) {
-                showMessage("Corrija os campos destacados.")
-                return@launch
-            }
             transient.update { it.copy(saving = true) }
             try {
-                if (current.telegramToken.isNotBlank()) {
-                    container.secretStore.put(SecretKind.TELEGRAM_BOT_TOKEN, current.telegramToken)
-                }
                 if (current.geminiKey.isNotBlank()) {
                     container.secretStore.put(SecretKind.GEMINI_API_KEY, current.geminiKey)
                 }
-                container.configRepository.saveUsersAndTimezone(
-                    ConfigValidator.authorizedIds(current),
-                    current.timezone.trim(),
-                )
-                // Segredos não permanecem na memória da UI após salvos.
-                form.update { it.copy(telegramToken = "", geminiKey = "") }
-                SafeLog.i("Configuração salva")
-                showMessage("Configuração salva.")
+                container.configRepository.saveProfile(current.displayName, current.timezone)
+                // A chave não permanece na memória da UI após salva.
+                form.update { it.copy(geminiKey = "") }
+                SafeLog.i("Ajustes salvos")
+                showMessage("Ajustes salvos.")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                SafeLog.e("Falha ao salvar configuração", e)
+                SafeLog.e("Falha ao salvar ajustes", e)
                 showMessage("Não foi possível salvar. Tente novamente.")
             } finally {
                 transient.update { it.copy(saving = false) }
@@ -145,16 +115,11 @@ class AdminViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
 
-    fun removeSecret(kind: SecretKind) {
+    fun removeGeminiKey() {
         viewModelScope.launch {
-            container.secretStore.remove(kind)
-            SafeLog.i("Segredo removido: ${kind.name}")
-            showMessage(
-                when (kind) {
-                    SecretKind.TELEGRAM_BOT_TOKEN -> "Token do Telegram removido."
-                    SecretKind.GEMINI_API_KEY -> "Chave Gemini removida."
-                },
-            )
+            container.secretStore.remove(SecretKind.GEMINI_API_KEY)
+            SafeLog.i("Chave Gemini removida")
+            showMessage("Chave Gemini removida.")
         }
     }
 
@@ -163,20 +128,6 @@ class AdminViewModel(private val container: AppContainer) : ViewModel() {
             container.configRepository.setAiConsent(granted, Instant.now(container.clock))
             SafeLog.i("Consentimento de IA alterado: $granted")
         }
-    }
-
-    fun start() {
-        viewModelScope.launch {
-            if (!uiState.value.canStart) {
-                showMessage("Salve o token do bot e ao menos um usuário antes de iniciar.")
-                return@launch
-            }
-            container.botController.start()
-        }
-    }
-
-    fun stop() {
-        viewModelScope.launch { container.botController.stop() }
     }
 
     fun refreshDiagnostics() {
@@ -198,7 +149,7 @@ class AdminViewModel(private val container: AppContainer) : ViewModel() {
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
-            initializer { AdminViewModel((this[APPLICATION_KEY] as FinBotApp).container) }
+            initializer { SettingsViewModel((this[APPLICATION_KEY] as FinBotApp).container) }
         }
     }
 }

@@ -10,8 +10,6 @@ object LogSanitizer {
     private const val MAX_LENGTH = 300
 
     private val rules = listOf(
-        // Token do Telegram, inclusive dentro de URLs ".../bot<token>/getUpdates".
-        Regex("(?<![0-9])\\d{5,20}:[A-Za-z0-9_-]{30,64}") to "[TOKEN_REMOVIDO]",
         // Chaves de API do Google.
         Regex("AIza[0-9A-Za-z_-]{35}") to "[CHAVE_REMOVIDA]",
         Regex("(?i)(x-goog-api-key\\s*[:=]\\s*)\\S+") to "$1[REMOVIDO]",

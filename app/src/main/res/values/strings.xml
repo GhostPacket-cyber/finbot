@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FinBot</string>
-    <string name="notification_channel_status_name">Status do bot</string>
-    <string name="notification_channel_status_description">Mostra se o bot do Telegram está em execução.</string>
 </resources>
