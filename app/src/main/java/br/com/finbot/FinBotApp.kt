@@ -4,6 +4,13 @@ import android.app.Application
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
 import br.com.finbot.config.ConfigRepository
+import br.com.finbot.data.FinBotDatabase
+import br.com.finbot.data.repository.AccountRepository
+import br.com.finbot.data.repository.BillRepository
+import br.com.finbot.data.repository.CategoryRepository
+import br.com.finbot.data.repository.PendingActionRepository
+import br.com.finbot.data.repository.SummaryRepository
+import br.com.finbot.data.repository.TransactionRepository
 import br.com.finbot.diagnostics.DeviceDiagnostics
 import br.com.finbot.security.KeystoreSecretCipher
 import br.com.finbot.security.SafeLog
@@ -26,6 +33,14 @@ class AppContainer(context: Context) {
     val configRepository = ConfigRepository(context.configDataStore)
     val secretStore = SecretStore(context.secretsDataStore, KeystoreSecretCipher())
     val diagnostics = DeviceDiagnostics(context)
+
+    val database: FinBotDatabase by lazy { FinBotDatabase.build(context) }
+    val categoryRepository by lazy { CategoryRepository(database, clock) }
+    val accountRepository by lazy { AccountRepository(database) }
+    val transactionRepository by lazy { TransactionRepository(database, clock, accountRepository) }
+    val summaryRepository by lazy { SummaryRepository(database) }
+    val billRepository by lazy { BillRepository(database, clock, transactionRepository) }
+    val pendingActionRepository by lazy { PendingActionRepository(database, clock) }
 }
 
 class FinBotApp : Application() {
@@ -38,7 +53,22 @@ class FinBotApp : Application() {
         super.onCreate()
         container = AppContainer(this)
         appScope.launch { removeLegacyData() }
+        appScope.launch { prepareDatabase() }
         SafeLog.i("Aplicativo iniciado")
+    }
+
+    /** Categorias padrão, conta "Carteira" e limpeza de ações pendentes vencidas. Idempotente. */
+    private suspend fun prepareDatabase() {
+        try {
+            val created = container.categoryRepository.ensureDefaults()
+            container.accountRepository.ensureDefault()
+            container.pendingActionRepository.purge()
+            if (created > 0) SafeLog.i("Categorias padrão criadas: $created")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            SafeLog.e("Falha ao preparar o banco", e)
+        }
     }
 
     /** Apaga dados da v1 (bot de mensagens) que podem ter ficado em instalações atualizadas. */

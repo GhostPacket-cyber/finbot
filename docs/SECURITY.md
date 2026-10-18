@@ -17,6 +17,11 @@ Documento vivo; o modelo de ameaças completo entra na ETAPA 11 (v2).
 ## Permissões
 - Nenhuma permissão declarada na v2 · ETAPA 01. Cada uma entra só na etapa que a usa, com justificativa.
 
+## Banco de dados
+- `databases/finbot.db` (SQLite/Room) fica no diretório privado do app e é excluído de backup em nuvem e de transferência entre aparelhos (`data_extraction_rules.xml`, `backup_rules.xml`).
+- O banco **não é criptografado** em repouso; depende da proteção do sandbox do Android e da criptografia do aparelho. Avaliar na ETAPA 11 (backup exportado será criptografado).
+- `audit_log` não guarda descrições antigas nem conteúdo de chat ou áudio, só os campos alterados.
+
 ## Backup e exportação
 - O backup automático do Android (nuvem e transferência entre aparelhos) está desativado.
 - Desinstalar o app ou limpar seus dados apaga tudo. A exportação e importação criptografadas entram na ETAPA 11.

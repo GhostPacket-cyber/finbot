@@ -2,6 +2,40 @@
 
 > **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007.
 
+## v2 · ETAPA 02 — SQLite/Room e regras financeiras
+
+**Status:** **concluída.** 41/41 testes JVM, **29/29 testes instrumentados no POCO X7 Pro** (Android 16) e lint com 0 erros. O banco é criado no app real com 11 categorias padrão e a conta "Carteira".
+
+### Feito
+- `data/`: 12 entidades (categories, accounts, transactions, bills, bill_occurrences, reminders, notification_log, pending_actions, budgets, import_batches, audit_log, chat_messages), DAOs, `Converters`, `FinBotDatabase` v2 e `MIGRATION_1_2`.
+- `data/repository/`: `CategoryRepository` (padrões, criar, arquivar), `AccountRepository`, `TransactionRepository` (criar, `createIfNew` com deduplicação, editar, excluir logicamente, confirmar e descartar, com auditoria), `SummaryRepository` (saldo, resumo diário e mensal por categoria), `BillRepository` (conta, ocorrência idempotente, pagar e desfazer com um único lançamento) e `PendingActionRepository` (TTL e uso único).
+- `domain/`: `Money` (parse e formato BRL em centavos), `Periods` (dia e mês no fuso do usuário), `TransactionRules`.
+- `FinBotApp`: banco preguiçoso no `AppContainer`; na abertura cria padrões e limpa ações vencidas.
+- Schemas `app/schemas/br.com.finbot.data.FinBotDatabase/1.json` e `2.json`.
+- `versionName` = `0.3.0-v2-etapa02`.
+
+### Comandos e resultados
+| Comando | Resultado |
+|---|---|
+| `gradlew assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug` | BUILD SUCCESSFUL |
+| testes JVM | **41/41**: Money 8, Periods 6, TransactionRules 6, ConfigValidator 5, ConfigRepository 4, SecretStore 7, LogSanitizer 5 |
+| `am instrument` no POCO | **29/29**: TransactionRepository 8, SummaryRepository 4, BillAndPendingAction 8, PersistenceAndMigration 2, Keystore 4, MainScreen 3 |
+| lint | 0 erros; 2 avisos (`OldTargetApi`, ADR-002; serialization 1.11.0 disponível, ADR-010) |
+| app real (`pm clear` + abrir) | log "Categorias padrão criadas: 11"; `databases/finbot.db` criado |
+
+Correção durante a verificação: a 1ª execução teve 28/29. O teste de migração falhou com `AbstractMethodError` por conflito de kotlinx-serialization 1.7.3 × 1.8.1, resolvido pelo BOM (ADR-010).
+
+### Critérios de aceite da etapa
+- [x] Persistência após fechar e reabrir o banco (`dadosPersistemAoFecharEReabrirOBanco`).
+- [x] Centavos exatos, virada de mês no fuso do usuário, fevereiro bissexto e virada de ano (JVM e instrumentados).
+- [x] Migração demonstrada: v1 criado a partir do schema exportado, migrado para v2 e validado, com dados preservados.
+- [x] `PENDING_REVIEW` e `DISCARDED` fora do saldo; conta não paga fora das despesas.
+
+### Limitações
+- Recorrência mensal e regra de meses curtos estão modeladas (`recurrence_rule`, `short_month_policy`), mas o cálculo da próxima ocorrência é da ETAPA 06.
+- `reminders`, `notification_log`, `budgets`, `import_batches` e `chat_messages` têm só DAOs mínimos; ganham regras nas etapas 03, 06, 08 e 10.
+- Ainda não há UI que use o banco (ETAPAS 03 e 05).
+
 ## v2 · ETAPA 01 — Transição para app isolado
 
 **Status:** **concluída.** Build ok, 21/21 testes JVM, lint com 0 erros, 7/7 testes instrumentados e testes manuais verificados no POCO X7 Pro (Android 16, HyperOS 3.0).

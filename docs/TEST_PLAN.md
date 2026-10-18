@@ -2,6 +2,23 @@
 
 Contrato vigente: `Prompt/FINBOT_PROMPT_MESTRE_V2.md`.
 
+## ETAPA 02 (v2) — Room e regras financeiras
+
+### JVM
+| Classe | Cobre |
+|---|---|
+| `MoneyTest` (8) | `R$ 1.234,56`, `45,9`, `1234.56`, `1.234`, negativos, entradas ambíguas rejeitadas, soma exata, formatação, ida e volta, limites |
+| `PeriodsTest` (6) | mês em São Paulo, último minuto do mês local × UTC, fevereiro bissexto, virada de ano, dia dependente do fuso (Manaus), intervalo inválido |
+| `TransactionRulesTest` (6) | valor, descrição, datas (antes de 2000, futuro > 1 dia), observação |
+
+### Instrumentados (banco real do Android, em memória ou arquivo)
+| Classe | Cobre |
+|---|---|
+| `TransactionRepositoryTest` (8) | saldo; `PENDING_REVIEW`/`DISCARDED` fora do saldo; exclusão lógica com auditoria; edição auditada sem a descrição antiga; deduplicação (inclusive após descarte); categoria de tipo errado ou arquivada; valores inválidos; padrões idempotentes |
+| `SummaryRepositoryTest` (4) | virada do mês no fuso; resumo mensal com centavos e ordem por categoria; resumo diário e período vazio; 300 lançamentos com soma exata |
+| `BillAndPendingActionTest` (8) | conta não paga ≠ despesa; pagar 2× = 1 lançamento; ocorrência idempotente; desfazer ou excluir reabre a conta; ação pendente de uso único, expirada, revertida em falha e cancelada |
+| `PersistenceAndMigrationTest` (2) | fechar e reabrir o arquivo do banco; migração v1 → v2 com `MigrationTestHelper` |
+
 ## ETAPA 01 (v2) — Transição para app isolado
 
 ### Testes JVM (`app/src/test`) — `gradlew testDebugUnitTest`

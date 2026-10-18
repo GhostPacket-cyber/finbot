@@ -64,6 +64,25 @@ As libs AndroidX traziam `kotlinx-coroutines-core` 1.9.0, enquanto o `kotlinx-co
 - `buildConfig = true` para exibir a versão em "Sobre".
 - Permissões só entram na etapa que as usa: INTERNET e RECORD_AUDIO na 04, POST_NOTIFICATIONS na 06.
 
+## ADR-010 — Room 2.8.5 com KSP 2.3.12 e kotlinx-serialization 1.8.1 (v2 · ETAPA 02)
+
+- **Room 2.8.5** (estável, set/2026) com o plugin `androidx.room`, que exporta os schemas em `app/schemas/`. Os arquivos são versionados e o plugin os injeta nos testes instrumentados para o `MigrationTestHelper`.
+- **KSP 2.3.12** (`com.google.devtools.ksp`), com correções para o built-in Kotlin do AGP 9 e o Kotlin 2.4. O kapt é incompatível com o built-in Kotlin.
+- **kotlinx-serialization 1.8.1** via BOM: o `room-testing` precisa de 1.8.1, mas as libs AndroidX traziam 1.7.3 ao APK do app, e o APK de teste é forçado à versão do app. Resultado: `AbstractMethodError` em `FieldBundle$$serializer` no teste de migração. O lint aponta 1.11.0; ficamos na mínima exigida pelo Room, para não subir dependência sem necessidade.
+
+## ADR-011 — Modelo de dados e regras financeiras (v2 · ETAPA 02)
+
+- **Usuário único por instalação:** sem coluna `user_id`. Todas as entidades exportáveis têm `uuid` (TEXT UNIQUE), para a mesclagem da ETAPA 11.
+- **Dinheiro** em centavos `Long`, sempre positivo; o sinal vem de `kind` (INCOME/EXPENSE). O limite por lançamento é R$ 10.000.000,00. `Money.parseCents` aceita formatos brasileiros e rejeita os ambíguos (ex.: `12,345`, `1,234.56`).
+- **Datas:** `Instant` em epoch millis (UTC) no banco. Períodos do usuário (dia, mês) são convertidos com o fuso dele em intervalos semiabertos `[início, fim)` (`domain/Periods.kt`). Datas de calendário (vencimentos) ficam em ISO `yyyy-MM-dd`.
+- **Saldo** = receitas CONFIRMED − despesas CONFIRMED, excluindo `deleted_at` não nulo, `PENDING_REVIEW` e `DISCARDED`. É rotulado como "saldo calculado", não bancário.
+- **Exclusão lógica** (`deleted_at`) com auditoria. `audit_log.summary_json` guarda só os campos alterados (ex.: `4500→5000`) e nunca a descrição antiga.
+- **Contas a pagar** não são despesas. `markPaid` cria **um** lançamento (`source = BILL`), e o índice único em `bill_occurrences.linked_transaction_id` impede dupla contagem. Chamadas repetidas são idempotentes. Excluir o lançamento reabre a ocorrência.
+- **Deduplicação:** índice único em `transactions.dedup_key`; os NULLs não colidem no SQLite. Itens descartados continuam bloqueando a reimportação.
+- **Ações pendentes:** a transição `PENDING → CONFIRMED/CANCELLED` é feita por um `UPDATE ... WHERE status='PENDING' AND expires_at > now`, o que garante uso único. A confirmação executa a escrita na mesma transação; se a escrita falha, tudo é revertido e a ação continua pendente.
+- **Categorias** são arquivadas, não apagadas (FK RESTRICT). As padrão são criadas na primeira execução, de forma idempotente.
+- **Migrações explícitas**, nunca destrutivas. v1 → v2 adiciona `transactions.note` (observação opcional).
+
 ## ADR-006 — Proteção da tela administrativa
 
 `FLAG_SECURE` na `MainActivity` impede screenshots, gravação de tela e a miniatura em "Recentes" da tela que recebe credenciais. Os campos de segredo usam máscara de senha, teclado sem autocorreção, e são limpos após salvar.
