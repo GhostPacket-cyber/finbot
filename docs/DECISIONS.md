@@ -113,6 +113,15 @@ As libs AndroidX traziam `kotlinx-coroutines-core` 1.9.0, enquanto o `kotlinx-co
 - **Salvar no formulário = confirmação explícita** do lançamento manual. Excluir pede confirmação e oferece desfazer.
 - **Mesclar categorias** é a forma de "apagar" uma categoria em uso: tudo migra numa transação e a origem fica arquivada (FK `RESTRICT` impede a exclusão física).
 
+## ADR-015 — Avisos locais com WorkManager, sem alarmes exatos (v2 · ETAPA 06)
+
+- **WorkManager 2.12.0**, periódico de 30 min (`KEEP`), mais a execução ao abrir o app. Alarmes exatos (`SCHEDULE_EXACT_ALARM`) exigem permissão especial e são restritos no Android 14+; para avisos de conta, ±30 min é aceitável.
+- **Idempotência por `event_key`** (`bill:<uuid>:<vencimento>:<offset>` e `reminder:<uuid>:<instante>`) em `notification_log`. A chave usa datas de calendário, então trocar de fuso não gera duplicata.
+- **Recuperação de 7 dias** após o app ficar parado. Mais antigo que isso é marcado como `SKIPPED`, e as contas atrasadas continuam visíveis na tela.
+- **Sem avisos retroativos:** o que foi planejado antes do cadastro é pulado, e de vários avisos da mesma ocorrência vencidos juntos só o mais recente é entregue (achado no aparelho).
+- **Meses curtos:** padrão "último dia do mês", configurável por conta. O dia-âncora é sempre o do primeiro vencimento.
+- **Janela de ocorrências** [hoje − 62, hoje + 40 dias]: evita gerar dezenas de atrasos para uma conta cadastrada com vencimento antigo.
+
 ## ADR-006 — Proteção da tela administrativa
 
 `FLAG_SECURE` na `MainActivity` impede screenshots, gravação de tela e a miniatura em "Recentes" da tela que recebe credenciais. Os campos de segredo usam máscara de senha, teclado sem autocorreção, e são limpos após salvar.

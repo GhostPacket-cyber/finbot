@@ -2,6 +2,51 @@
 
 > **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007.
 
+## v2 · ETAPA 06 — Contas, recorrência e lembretes
+
+**Status:** **concluída.** 95/95 testes JVM, **79/79 instrumentados no POCO X7 Pro** e lint com 0 erros. Verificado no aparelho: notificações reais postadas no canal `contas_lembretes`, toque abrindo a aba Contas e o job periódico do WorkManager registrado e executado.
+
+### Feito
+- `scheduling/Recurrence`: mensal com dia-âncora fixo (31/jan → 28/fev → 31/mar) e regra de meses curtos configurável (**último dia**, padrão, ou **1º do mês seguinte**); repetição de lembretes (uma vez, diária, semanal, mensal com âncora) que pula ocorrências perdidas.
+- `scheduling/DueEventPlanner` (puro):
+  - avisos às 9h locais nos dias escolhidos (3 e 1 dia antes, no dia, 1 e 3 dias depois);
+  - texto calculado no momento da entrega ("vence hoje", "atrasada há N dias") e nota "aviso com atraso de X";
+  - `event_key` estável e independente de fuso;
+  - janela de recuperação de 7 dias;
+  - **nada planejado antes do cadastro da conta**; vários avisos vencidos juntos → só o mais recente.
+- `scheduling/ReminderProcessor`: gera ocorrências da janela [−62, +40 dias], entrega cada aviso uma única vez (`notification_log`), registra falhas (máx. 3 tentativas) e pulos, e avança ou desativa lembretes pessoais. Um `Mutex` impede execuções simultâneas.
+- `AndroidNotifier` (canal "Contas e lembretes", toque → aba Contas), `ReminderWorker` (`CoroutineWorker`) e `ReminderScheduler` (periódico de 30 min, `KEEP`, sobrevive a reinício). A verificação também roda em `MainActivity.onStart`.
+- Tela **Contas**:
+  - a pagar (atrasadas em vermelho), pagar com data e conta e **Desfazer**;
+  - pagas nos últimos 30 dias (desfazer);
+  - lembretes (ativar/desativar, excluir com confirmação);
+  - formulários de conta (única/mensal, meses curtos quando o dia ≥ 29, avisos, categoria; editar e desativar) e de lembrete.
+- `POST_NOTIFICATIONS` pedido ao salvar a primeira conta ou lembrete.
+- WorkManager 2.12.0 (`work-runtime`; o `-ktx` está vazio desde a 2.9) e `work-testing` nos testes.
+- `versionName` = `0.7.0-v2-etapa06`.
+
+### Testes
+| Suite | Cobre |
+|---|---|
+| `RecurrenceAndPlannerTest` (JVM, 10) | dia 31 nas duas regras, bissexto, intervalo, repetições, offsets, aviso só a partir das 9h, atraso com contexto, só o mais recente, mais de 7 dias, conta cadastrada após o horário, chave independente de fuso, lembrete |
+| `ReminderProcessorTest` (11) | aviso antes do vencimento **uma vez, mesmo após "reinício"**; **troca de fuso** sem duplicar; **conta paga sem avisos e sem lançamento duplicado**; **meses curtos**; falha registrada com 3 tentativas; falha temporária entregue depois; mais de 7 dias pulado; cadastro hoje após as 9h; lembrete único e diário com recuperação; lembrete no passado rejeitado; `ReminderWorker` |
+| `BillsScreenTest` (UI) | cadastrar conta que vence hoje → pagar → Desfazer |
+
+### Problema encontrado no aparelho e corrigido
+- Uma conta cadastrada às 14h vencendo no mesmo dia gerou **duas notificações** ("vence hoje (aviso com atraso de 5 h)" e "(… 3 dias)"): eram avisos de horários anteriores ao cadastro. Agora são registrados como pulados, e quando vários avisos vencem juntos só o mais recente é entregue. Isso foi confirmado lendo as notificações reais no `dumpsys notification`.
+
+### Critérios de aceite
+- [x] Lembrete antes do vencimento.
+- [x] Pagamento sem duplicação.
+- [x] Recorrência em meses curtos.
+- [x] Reinício e reconexão: o estado fica no banco, o job do WorkManager persiste, e um novo processador não repete avisos.
+- [x] Mudança de fuso: chave por data, sem duplicar.
+- "Dois usuários independentes" não se aplica na v2 (um usuário por aparelho).
+
+### Limitações
+- O horário dos avisos de conta é fixo (9h). A entrega pode atrasar até ~30 min, ou mais com Doze ou a economia de bateria do fabricante.
+- Não há alarmes exatos (decisão; ver ADR-015).
+
 ## v2 · ETAPA 05 — Telas de gestão
 
 **Status:** **concluída.** 85/85 testes JVM, **67/67 testes instrumentados no POCO X7 Pro** e lint com 0 erros. A tela foi conferida no aparelho, inclusive o botão Voltar.

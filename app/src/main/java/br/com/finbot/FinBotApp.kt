@@ -10,6 +10,10 @@ import br.com.finbot.data.repository.AccountRepository
 import br.com.finbot.data.repository.BillRepository
 import br.com.finbot.data.repository.CategoryRepository
 import br.com.finbot.data.repository.PendingActionRepository
+import br.com.finbot.data.repository.ReminderRepository
+import br.com.finbot.scheduling.AndroidNotifier
+import br.com.finbot.scheduling.ReminderProcessor
+import br.com.finbot.scheduling.ReminderScheduler
 import br.com.finbot.data.repository.SummaryRepository
 import br.com.finbot.data.repository.TransactionRepository
 import br.com.finbot.diagnostics.DeviceDiagnostics
@@ -59,6 +63,18 @@ class AppContainer(context: Context) {
             }
         })
     }
+    val reminderRepository by lazy { ReminderRepository(database, clock) }
+    val notifier by lazy { AndroidNotifier(context) }
+    val reminderProcessor by lazy {
+        ReminderProcessor(database, billRepository, reminderRepository, notifier, zone = { userZone() }, clock = clock)
+    }
+
+    suspend fun userZone(): java.time.ZoneId = try {
+        java.time.ZoneId.of(configRepository.config.first().timezone)
+    } catch (_: java.time.DateTimeException) {
+        java.time.ZoneId.of("America/Sao_Paulo")
+    }
+
     val chatAssistant by lazy {
         ChatAssistant(
             database, transactionRepository, summaryRepository, categoryRepository, pendingActionRepository, configRepository, clock, aiInterpreter,
@@ -77,6 +93,8 @@ class FinBotApp : Application() {
         container = AppContainer(this)
         appScope.launch { removeLegacyData() }
         appScope.launch { prepareDatabase() }
+        container.notifier.createChannel()
+        ReminderScheduler.schedule(this)
         SafeLog.i("Aplicativo iniciado")
     }
 

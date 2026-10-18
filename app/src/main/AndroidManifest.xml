@@ -3,9 +3,11 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- INTERNET: somente HTTPS para a Gemini API (ETAPA 04), usada apenas com consentimento.
-         RECORD_AUDIO: mensagens de voz, pedida no primeiro uso. POST_NOTIFICATIONS entra na ETAPA 06. -->
+         RECORD_AUDIO: mensagens de voz, pedida no primeiro uso.
+         POST_NOTIFICATIONS: avisos de contas e lembretes, pedida ao salvar a primeira conta ou lembrete. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".FinBotApp"

@@ -40,8 +40,8 @@ class MainScreenTest {
         rule.onNodeWithText("Mensagem").assertIsDisplayed()
         rule.onNode(hasText("Lançamentos") and hasClickAction()).performClick()
         rule.onNodeWithText("+ Novo lançamento").assertIsDisplayed()
-        rule.onNodeWithText("Contas").performClick()
-        rule.onNodeWithText("Em breve (ETAPA 06)").assertIsDisplayed()
+        rule.onNode(hasText("Contas") and hasClickAction()).performClick()
+        rule.onNodeWithText("+ Conta").assertIsDisplayed()
         rule.onNodeWithText("Relatórios").performClick()
         rule.onNodeWithText("Em breve (ETAPA 07)").assertIsDisplayed()
     }

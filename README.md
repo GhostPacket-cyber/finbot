@@ -25,8 +25,10 @@ O APK fica em `app/build/outputs/apk/debug/app-debug.apk`.
 - Se a instalação falhar com `INSTALL_FAILED_USER_RESTRICTED`, desative a verificação de apps antes de instalar em *Segurança → ⚙ → Verificação de segurança*. Religue depois, se quiser.
 
 ## Bateria e lembretes
-- O cartão "Diagnóstico do aparelho" em Ajustes mostra a versão do Android e se o FinBot sofre otimização de bateria. O botão "Ajustes de bateria" abre a tela do sistema.
-- Os lembretes (ETAPA 06) podem atrasar com a otimização ativa. Consulte https://dontkillmyapp.com para o seu modelo.
+- Os avisos de contas (às 9h) e os lembretes são conferidos pelo WorkManager a cada ~30 min e sempre que o app é aberto. Eles **podem atrasar**: o Android adia tarefas em segundo plano (Doze) e fabricantes como Xiaomi, Samsung e Motorola têm economias de bateria mais agressivas.
+- Para reduzir atrasos: em Ajustes → "Ajustes de bateria", escolha **Sem restrições** para o FinBot. No HyperOS/MIUI, ative também **Inicialização automática** em *Configurações → Apps → Gerenciar apps → FinBot*. Guia por modelo: https://dontkillmyapp.com.
+- Avisos que deveriam ter chegado com o app parado são entregues ao voltar, com a nota "aviso com atraso de …". Com mais de 7 dias de atraso são pulados, mas a conta continua em "A pagar".
+- A permissão de notificações é pedida ao salvar a primeira conta ou lembrete. Sem ela, nada é notificado, e o app registra a falha.
 
 ## Documentação
 - `docs/DECISIONS.md`: versões e decisões técnicas.

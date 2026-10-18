@@ -8,6 +8,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import androidx.room.Upsert
+import br.com.finbot.data.BillOccurrenceStatus
 import br.com.finbot.data.PendingActionStatus
 import br.com.finbot.data.entity.AuditLogEntity
 import br.com.finbot.data.entity.BillEntity
@@ -21,6 +22,22 @@ import br.com.finbot.data.entity.ReminderEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.time.LocalDate
+
+/** Ocorrência com os dados da conta (para tela, avisos e pagamento). */
+data class OccurrenceView(
+    @ColumnInfo(name = "occurrence_id") val occurrenceId: Long,
+    @ColumnInfo(name = "bill_id") val billId: Long,
+    @ColumnInfo(name = "bill_uuid") val billUuid: String,
+    val title: String,
+    @ColumnInfo(name = "amount_cents") val amountCents: Long,
+    @ColumnInfo(name = "category_name") val categoryName: String?,
+    @ColumnInfo(name = "due_date") val dueDate: LocalDate,
+    val status: BillOccurrenceStatus,
+    @ColumnInfo(name = "paid_at") val paidAt: Instant?,
+    @ColumnInfo(name = "recurrence_rule") val recurrenceRule: String?,
+    @ColumnInfo(name = "remind_offsets_days") val remindOffsetsDays: String,
+    @ColumnInfo(name = "bill_created_at") val billCreatedAt: Instant,
+)
 
 data class BillDueRow(
     @ColumnInfo(name = "occurrence_id") val occurrenceId: Long,
@@ -40,6 +57,46 @@ data class ChatRow(
 interface BillDao {
     @Insert
     suspend fun insertBill(bill: BillEntity): Long
+
+    @Update
+    suspend fun updateBill(bill: BillEntity)
+
+    @Query("SELECT * FROM bills WHERE active = 1")
+    suspend fun listActiveBills(): List<BillEntity>
+
+    /** Pendentes de contas ativas com vencimento até [until] (inclui atrasadas). */
+    @Query(
+        """
+        SELECT $OCCURRENCE_COLUMNS FROM bill_occurrences o
+        JOIN bills b ON b.id = o.bill_id LEFT JOIN categories c ON c.id = b.category_id
+        WHERE o.status = 'PENDING' AND b.active = 1 AND o.due_date <= :until
+        ORDER BY o.due_date, b.title
+        """,
+    )
+    suspend fun listPendingUntil(until: LocalDate): List<OccurrenceView>
+
+    @Query(
+        """
+        SELECT $OCCURRENCE_COLUMNS FROM bill_occurrences o
+        JOIN bills b ON b.id = o.bill_id LEFT JOIN categories c ON c.id = b.category_id
+        WHERE o.status = 'PENDING' AND b.active = 1 AND o.due_date <= :until
+        ORDER BY o.due_date, b.title
+        """,
+    )
+    fun observePendingUntil(until: LocalDate): Flow<List<OccurrenceView>>
+
+    @Query(
+        """
+        SELECT $OCCURRENCE_COLUMNS FROM bill_occurrences o
+        JOIN bills b ON b.id = o.bill_id LEFT JOIN categories c ON c.id = b.category_id
+        WHERE o.status = 'PAID' AND o.paid_at >= :since
+        ORDER BY o.paid_at DESC
+        """,
+    )
+    fun observePaidSince(since: Instant): Flow<List<OccurrenceView>>
+
+    @Query("SELECT * FROM bills WHERE active = 1 ORDER BY title")
+    fun observeActiveBills(): Flow<List<BillEntity>>
 
     @Query("UPDATE bills SET category_id = :target WHERE category_id = :source")
     suspend fun remapCategory(source: Long, target: Long): Int
@@ -84,6 +141,21 @@ interface ReminderDao {
 
     @Query("SELECT * FROM reminders WHERE enabled = 1 ORDER BY scheduled_at")
     suspend fun listEnabled(): List<ReminderEntity>
+
+    @Update
+    suspend fun update(reminder: ReminderEntity)
+
+    @Query("DELETE FROM reminders WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("SELECT * FROM reminders WHERE id = :id")
+    suspend fun getById(id: Long): ReminderEntity?
+
+    @Query("SELECT * FROM reminders WHERE enabled = 1 AND scheduled_at <= :now ORDER BY scheduled_at")
+    suspend fun listDue(now: Instant): List<ReminderEntity>
+
+    @Query("SELECT * FROM reminders ORDER BY enabled DESC, scheduled_at")
+    fun observeAll(): Flow<List<ReminderEntity>>
 }
 
 @Dao
@@ -94,6 +166,9 @@ interface NotificationLogDao {
 
     @Query("SELECT * FROM notification_log WHERE event_key = :eventKey")
     suspend fun findByKey(eventKey: String): NotificationLogEntity?
+
+    @Update
+    suspend fun update(entry: NotificationLogEntity)
 }
 
 @Dao
@@ -177,3 +252,10 @@ interface ChatMessageDao {
     @Query("DELETE FROM chat_messages")
     suspend fun deleteAll()
 }
+
+/** Colunas de [OccurrenceView] (constante de compilação para uso em @Query). */
+const val OCCURRENCE_COLUMNS = """
+    o.id AS occurrence_id, o.bill_id AS bill_id, b.uuid AS bill_uuid, b.title AS title, b.amount_cents AS amount_cents,
+    c.name AS category_name, o.due_date AS due_date, o.status AS status, o.paid_at AS paid_at,
+    b.recurrence_rule AS recurrence_rule, b.remind_offsets_days AS remind_offsets_days, b.created_at AS bill_created_at
+"""

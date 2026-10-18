@@ -19,6 +19,10 @@ import br.com.finbot.data.repository.AccountRepository
 import br.com.finbot.data.repository.BillRepository
 import br.com.finbot.data.repository.CategoryRepository
 import br.com.finbot.data.repository.PendingActionRepository
+import br.com.finbot.data.repository.ReminderRepository
+import br.com.finbot.scheduling.DueEvent
+import br.com.finbot.scheduling.Notifier
+import br.com.finbot.scheduling.ReminderProcessor
 import br.com.finbot.data.repository.SummaryRepository
 import br.com.finbot.data.repository.TransactionRepository
 import java.time.Clock
@@ -48,6 +52,11 @@ class TestFinance(val clock: MutableClock = MutableClock(Instant.parse("2026-10-
     val transactions = TransactionRepository(db, clock, accounts)
     val summaries = SummaryRepository(db)
     val bills = BillRepository(db, clock, transactions)
+    val reminders = ReminderRepository(db, clock)
+    val notifier = FakeNotifier()
+    var zone: ZoneId = ZoneId.of("America/Sao_Paulo")
+    fun newProcessor() = ReminderProcessor(db, bills, reminders, notifier, zone = { zone }, clock = clock)
+    val processor = newProcessor()
     val pending = PendingActionRepository(db, clock)
 
     private val configScope = CoroutineScope(Dispatchers.IO + Job())
@@ -83,5 +92,16 @@ class ScriptedGemini : GeminiApi {
     override suspend fun generate(apiKey: String, request: GeminiRequest): GeminiOutcome {
         requests += request
         return responses.removeFirstOrNull() ?: error("Nenhuma resposta roteirizada")
+    }
+}
+
+/** Registra o que seria notificado; [available] = false simula permissão negada. */
+class FakeNotifier : Notifier {
+    val shown = mutableListOf<DueEvent>()
+    var available = true
+    override fun show(event: DueEvent): Boolean {
+        if (!available) return false
+        shown += event
+        return true
     }
 }

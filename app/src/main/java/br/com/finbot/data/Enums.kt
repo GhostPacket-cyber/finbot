@@ -16,7 +16,7 @@ enum class BillOccurrenceStatus { PENDING, PAID, SKIPPED }
 /** Regra para vencimentos nos dias 29–31 em meses mais curtos. */
 enum class ShortMonthPolicy { LAST_DAY_OF_MONTH, FIRST_DAY_OF_NEXT_MONTH }
 
-enum class NotificationStatus { SENT, FAILED }
+enum class NotificationStatus { SENT, FAILED, SKIPPED }
 
 enum class ActionOrigin { CHAT, AI, IMPORT, BANK_NOTIFICATION }
 

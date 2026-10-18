@@ -10,6 +10,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -23,17 +24,22 @@ import br.com.finbot.ui.onboarding.OnboardingScreen
 import br.com.finbot.ui.chat.ChatScreen
 import br.com.finbot.ui.settings.SettingsScreen
 import br.com.finbot.ui.transactions.TransactionsTab
+import br.com.finbot.ui.bills.BillsTab
 
 enum class MainTab(val label: String, val icon: Int, val comingInStage: String?) {
     CHAT("Chat", R.drawable.ic_tab_chat, null),
     TRANSACTIONS("Lançamentos", R.drawable.ic_tab_list, null),
-    BILLS("Contas", R.drawable.ic_tab_bills, "ETAPA 06"),
+    BILLS("Contas", R.drawable.ic_tab_bills, null),
     REPORTS("Relatórios", R.drawable.ic_tab_reports, "ETAPA 07"),
     SETTINGS("Ajustes", R.drawable.ic_tab_settings, null),
 }
 
 @Composable
-fun FinBotRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory)) {
+fun FinBotRoot(
+    tabRequest: MainTab? = null,
+    onTabRequestHandled: () -> Unit = {},
+    viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory),
+) {
     val config by viewModel.config.collectAsStateWithLifecycle()
     val loaded = config
     if (loaded == null) {
@@ -42,13 +48,20 @@ fun FinBotRoot(viewModel: AppViewModel = viewModel(factory = AppViewModel.Factor
         val errors by viewModel.onboardingErrors.collectAsStateWithLifecycle()
         OnboardingScreen(errors = errors, onComplete = viewModel::completeOnboarding)
     } else {
-        MainScaffold()
+        MainScaffold(tabRequest, onTabRequestHandled)
     }
 }
 
 @Composable
-private fun MainScaffold() {
+private fun MainScaffold(tabRequest: MainTab?, onTabRequestHandled: () -> Unit) {
     var selected by rememberSaveable { mutableStateOf(MainTab.CHAT) }
+    // Toque numa notificação: abre a aba pedida.
+    LaunchedEffect(tabRequest) {
+        if (tabRequest != null) {
+            selected = tabRequest
+            onTabRequestHandled()
+        }
+    }
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -70,6 +83,7 @@ private fun MainScaffold() {
                 stage != null -> ComingSoonScreen(title = selected.label, stage = stage)
                 selected == MainTab.CHAT -> ChatScreen()
                 selected == MainTab.TRANSACTIONS -> TransactionsTab()
+                selected == MainTab.BILLS -> BillsTab()
                 else -> SettingsScreen()
             }
         }
