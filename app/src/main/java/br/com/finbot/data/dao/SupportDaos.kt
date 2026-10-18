@@ -1,6 +1,8 @@
 package br.com.finbot.data.dao
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -19,6 +21,20 @@ import br.com.finbot.data.entity.ReminderEntity
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.time.LocalDate
+
+data class BillDueRow(
+    @ColumnInfo(name = "occurrence_id") val occurrenceId: Long,
+    val title: String,
+    @ColumnInfo(name = "amount_cents") val amountCents: Long,
+    @ColumnInfo(name = "due_date") val dueDate: LocalDate,
+)
+
+data class ChatRow(
+    @Embedded val message: ChatMessageEntity,
+    @ColumnInfo(name = "action_status") val actionStatus: PendingActionStatus?,
+    @ColumnInfo(name = "action_payload") val actionPayload: String?,
+    @ColumnInfo(name = "action_expires_at") val actionExpiresAt: Instant?,
+)
 
 @Dao
 interface BillDao {
@@ -46,6 +62,16 @@ interface BillDao {
 
     @Query("SELECT * FROM bill_occurrences WHERE status = 'PENDING' ORDER BY due_date")
     suspend fun listPendingOccurrences(): List<BillOccurrenceEntity>
+
+    @Query(
+        """
+        SELECT o.id AS occurrence_id, b.title AS title, b.amount_cents AS amount_cents, o.due_date AS due_date
+        FROM bill_occurrences o JOIN bills b ON b.id = o.bill_id
+        WHERE o.status = 'PENDING' AND b.active = 1
+        ORDER BY o.due_date LIMIT :limit
+        """,
+    )
+    suspend fun listPendingDue(limit: Int): List<BillDueRow>
 }
 
 @Dao
@@ -87,8 +113,9 @@ interface PendingActionDao {
     )
     suspend fun resolveIfPending(id: Long, newStatus: PendingActionStatus, now: Instant): Int
 
-    @Query("DELETE FROM pending_actions WHERE expires_at <= :now OR status != 'PENDING'")
-    suspend fun deleteExpiredOrResolved(now: Instant): Int
+    /** Retenção: ações (resolvidas ou não) criadas antes de [cutoff]. Recentes ficam para exibir o status no chat. */
+    @Query("DELETE FROM pending_actions WHERE created_at < :cutoff")
+    suspend fun deleteCreatedBefore(cutoff: Instant): Int
 }
 
 @Dao
@@ -125,6 +152,17 @@ interface ChatMessageDao {
 
     @Query("SELECT * FROM chat_messages ORDER BY created_at DESC, id DESC LIMIT :limit")
     fun observeRecent(limit: Int): Flow<List<ChatMessageEntity>>
+
+    /** Mensagens com o estado atual da ação vinculada (para desenhar o cartão de confirmação). */
+    @Query(
+        """
+        SELECT m.*, a.status AS action_status, a.payload_json AS action_payload, a.expires_at AS action_expires_at
+        FROM chat_messages m LEFT JOIN pending_actions a ON a.id = m.related_action_id
+        ORDER BY m.created_at DESC, m.id DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeRecentWithActions(limit: Int): Flow<List<ChatRow>>
 
     @Query("DELETE FROM chat_messages")
     suspend fun deleteAll()

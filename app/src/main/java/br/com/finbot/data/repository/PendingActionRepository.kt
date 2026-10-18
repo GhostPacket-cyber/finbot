@@ -37,10 +37,11 @@ class PendingActionRepository(private val db: FinBotDatabase, private val clock:
 
     suspend fun get(id: Long): PendingActionEntity? = dao.getById(id)
 
-    /** Remove ações expiradas ou já resolvidas. */
-    suspend fun purge(): Int = dao.deleteExpiredOrResolved(Instant.now(clock))
+    /** Remove ações criadas há mais de [retention]; as recentes ficam para o chat exibir o status. */
+    suspend fun purge(retention: Duration = RETENTION): Int = dao.deleteCreatedBefore(Instant.now(clock).minus(retention))
 
     companion object {
         val DEFAULT_TTL: Duration = Duration.ofMinutes(15)
+        val RETENTION: Duration = Duration.ofDays(30)
     }
 }

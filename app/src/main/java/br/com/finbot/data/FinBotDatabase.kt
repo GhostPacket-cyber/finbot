@@ -30,7 +30,7 @@ import br.com.finbot.data.entity.ReminderEntity
 import br.com.finbot.data.entity.TransactionEntity
 
 @Database(
-    version = 2,
+    version = 3,
     exportSchema = true,
     entities = [
         CategoryEntity::class,
@@ -65,7 +65,7 @@ abstract class FinBotDatabase : RoomDatabase() {
         const val FILE_NAME = "finbot.db"
 
         /** Migrações explícitas; nunca usar fallbackToDestructiveMigration (apagaria dados financeiros). */
-        val MIGRATIONS = arrayOf(MIGRATION_1_2)
+        val MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
 
         fun build(context: Context): FinBotDatabase =
             Room.databaseBuilder(context, FinBotDatabase::class.java, FILE_NAME)

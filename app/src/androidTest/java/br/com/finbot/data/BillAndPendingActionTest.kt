@@ -103,6 +103,9 @@ class BillAndPendingActionTest {
         f.clock.advance(Duration.ofMinutes(16))
         assertNull(f.pending.confirm(id) { "executou" })
         assertFalse(f.pending.cancel(id))
+        // Expirada, mas mantida para o chat mostrar o status; só sai após a retenção de 30 dias.
+        assertEquals(0, f.pending.purge())
+        f.clock.advance(Duration.ofDays(31))
         assertEquals(1, f.pending.purge())
     }
 

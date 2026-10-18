@@ -84,4 +84,7 @@ data class ChatMessageEntity(
     val text: String,
     @ColumnInfo(name = "created_at") val createdAt: Instant,
     @ColumnInfo(name = "related_action_id") val relatedActionId: Long? = null,
+    /** Comando enviado ao tocar no botão da mensagem (ex.: "/gastos 2"). Schema v3. */
+    @ColumnInfo(name = "quick_reply") val quickReply: String? = null,
+    @ColumnInfo(name = "quick_reply_label") val quickReplyLabel: String? = null,
 )

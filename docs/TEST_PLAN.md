@@ -2,6 +2,29 @@
 
 Contrato vigente: `Prompt/FINBOT_PROMPT_MESTRE_V2.md`.
 
+## ETAPA 03 (v2) — Chat sem IA
+
+### JVM
+| Classe | Cobre |
+|---|---|
+| `CommandParserTest` (9) | comandos com barra; frases do prompt; formatos de valor; datas relativas e absolutas; "dia 5" não vira valor; ambiguidade → pergunta; consultas; não reconhecido e prompt injection; sugestão de categoria |
+
+### Instrumentados
+| Classe | Cobre |
+|---|---|
+| `ChatAssistantTest` (12) | nada gravado antes de confirmar; confirmação única; cancelar; expirado; editar (uma vez); edição inválida não consome o cartão; consultas com números do banco; "Ver mais"; `/desfazer` com confirmação; ambíguo ou desconhecido sem cartão; histórico apagado sem afetar lançamentos; payload ilegível nunca executa |
+| `ChatScreenTest` (3) | UI real: digitar → cartão → Confirmar → "✓ Confirmado" sem botão; chip Saldo; frase sem valor pede esclarecimento |
+| `PersistenceAndMigrationTest` (+2) | v2 → v3 preserva o histórico; cadeia v1 → v3 |
+
+Pré-requisito no aparelho: tela desbloqueada ("Permanecer ativo" ajuda).
+
+### Manuais sugeridos
+1. "gastei 45,90 no mercado" → cartão → **Editar** (trocar categoria) → Confirmar → resposta com saldo.
+2. "/gastos" com mais de 10 lançamentos → **Ver mais**.
+3. Fechar e reabrir o app → histórico e status dos cartões mantidos.
+4. Modo avião → tudo funciona.
+5. TalkBack: rótulos "Você"/"FinBot" e botões anunciados.
+
 ## ETAPA 02 (v2) — Room e regras financeiras
 
 ### JVM

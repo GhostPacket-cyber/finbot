@@ -83,6 +83,16 @@ As libs AndroidX traziam `kotlinx-coroutines-core` 1.9.0, enquanto o `kotlinx-co
 - **Categorias** são arquivadas, não apagadas (FK RESTRICT). As padrão são criadas na primeira execução, de forma idempotente.
 - **Migrações explícitas**, nunca destrutivas. v1 → v2 adiciona `transactions.note` (observação opcional).
 
+## ADR-012 — Chat determinístico e cartões de confirmação (v2 · ETAPA 03)
+
+- **Sem IA nesta etapa:** `CommandParser` é uma função pura testada em JVM. Na ambiguidade, responde com uma pergunta e nunca adivinha. Instruções embutidas no texto são tratadas como texto.
+- **Toda escrita passa por cartão:** a mensagem gera uma `pending_action` (TTL 15 min) e um cartão. Confirmar ou Editar grava na mesma transação da baixa da ação (`PendingActionRepository.confirm`). Repetir não grava de novo, e se a gravação falha, nada muda e o cartão continua pendente.
+- `/desfazer` também é uma escrita: gera o cartão "Excluir lançamento?".
+- **Data do lançamento:** hoje usa o instante atual; datas passadas usam meio-dia local, para evitar viradas de dia por fuso.
+- **"Ver mais" persistente:** botões de resposta rápida gravados em `chat_messages` (schema v3) para sobreviver ao reinício.
+- **Retenção:** ações pendentes ficam 30 dias, para o histórico mostrar Confirmado/Cancelado/Expirado; depois são apagadas e a mensagem vira texto simples.
+- **Fila na UI:** as operações do ViewModel passam por um `Mutex`, e os botões ficam desabilitados enquanto há uma em andamento.
+
 ## ADR-006 — Proteção da tela administrativa
 
 `FLAG_SECURE` na `MainActivity` impede screenshots, gravação de tela e a miniatura em "Recentes" da tela que recebe credenciais. Os campos de segredo usam máscara de senha, teclado sem autocorreção, e são limpos após salvar.

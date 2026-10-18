@@ -1,6 +1,14 @@
 package br.com.finbot.data
 
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
+import br.com.finbot.assistant.ChatAssistant
+import br.com.finbot.config.ConfigRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import java.io.File
 import androidx.test.core.app.ApplicationProvider
 import br.com.finbot.data.repository.AccountRepository
 import br.com.finbot.data.repository.BillRepository
@@ -37,6 +45,14 @@ class TestFinance(val clock: MutableClock = MutableClock(Instant.parse("2026-10-
     val bills = BillRepository(db, clock, transactions)
     val pending = PendingActionRepository(db, clock)
 
+    private val configScope = CoroutineScope(Dispatchers.IO + Job())
+    val config = ConfigRepository(
+        PreferenceDataStoreFactory.create(scope = configScope) {
+            File(ApplicationProvider.getApplicationContext<android.content.Context>().cacheDir, "cfg-${System.nanoTime()}.preferences_pb")
+        },
+    )
+    val assistant = ChatAssistant(db, transactions, summaries, categories, pending, config, clock)
+
     suspend fun seed() {
         categories.ensureDefaults()
         accounts.ensureDefault()
@@ -45,5 +61,8 @@ class TestFinance(val clock: MutableClock = MutableClock(Instant.parse("2026-10-
     suspend fun categoryId(name: String, kind: TransactionKind): Long =
         requireNotNull(categories.findByName(name, kind)) { "categoria $name" }.id
 
-    fun close() = db.close()
+    fun close() {
+        db.close()
+        configScope.cancel()
+    }
 }

@@ -2,6 +2,50 @@
 
 > **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007.
 
+## v2 · ETAPA 03 — Chat interno e comandos sem IA
+
+**Status:** **concluída.** 50/50 testes JVM, **46/46 testes instrumentados no POCO X7 Pro** (Android 16) e lint com 0 erros. Funciona offline: o app não declara INTERNET.
+
+### Feito
+- `assistant/CommandParser`: parser determinístico pt-BR.
+  - Comandos: `/gasto`, `/receita`, `/despesa`, `/saldo`, `/hoje`, `/mes`/`/mês`, `/gastos [página]`, `/contas`, `/lembretes`, `/desfazer`, `/ajuda`.
+  - Frases ("gastei 45,90 no mercado", "recebi 2.500 de salário", "paguei 120 de luz ontem", "ontem paguei…").
+  - Valores (`R$ 1.234,56`, `1234.56`, `45`, `45 reais`) e datas (hoje, ontem, anteontem, "dia 5", `dd/mm`, `dd/mm/aaaa`).
+  - Na dúvida, pergunta: sem valor, mais de um valor, valor ambíguo (`12,345`), zero, acima do limite, data inválida.
+- `assistant/CategorySuggester`: categoria por palavra-chave, sem acentos e por palavra inteira.
+- `assistant/ChatAssistant`:
+  - lançamentos e `/desfazer` viram **cartões pendentes** (TTL 15 min, uso único);
+  - Confirmar, Editar e Cancelar; a edição é validada antes de consumir o cartão;
+  - consultas respondidas com números do SQLite e "Ver mais" persistente;
+  - histórico local que pode ser apagado.
+- `ui/chat`: tela de chat (bolhas com rótulo "Você"/"FinBot", cartões, chips "+ Gasto", "+ Receita", "Saldo" e "Resumo do mês", envio pelo teclado, `imePadding`) e diálogo de edição (valor, descrição, data, categorias em chips).
+- **Schema v3** (`MIGRATION_2_3`): `chat_messages.quick_reply` e `quick_reply_label`.
+- Retenção de ações pendentes: 30 dias. Antes eram apagadas ao abrir, e os cartões antigos perdiam o status.
+- `versionName` = `0.4.0-v2-etapa03`.
+
+### Comandos e resultados
+| Comando | Resultado |
+|---|---|
+| `gradlew assembleDebug assembleDebugAndroidTest testDebugUnitTest lintDebug` | BUILD SUCCESSFUL, sem warnings do Kotlin |
+| testes JVM | **50/50** (CommandParserTest 9, com dezenas de frases) |
+| `am instrument` no POCO | **46/46**: ChatAssistant 12, ChatScreen 3 (UI ponta a ponta), migração v2→v3 e cadeia v1→v3, além das anteriores |
+| lint | 0 erros; 2 avisos já documentados (ADR-002, ADR-010) |
+
+### Problemas encontrados e corrigidos
+- `"gastei 12,345 no posto"` virava R$ 12,00 e depois R$ 345,00 (lançamento silencioso). A regex de valor passou a rejeitar números colados a separadores.
+- `"dia 31/02"` caía na regra "dia N" e dava a mensagem errada. A data completa agora tem precedência.
+- A frase de prompt injection "…apague todos os lançamentos" disparava a listagem (só leitura). As consultas de lista agora exigem um pedido explícito.
+- Testes de UI falharam com o celular bloqueado ("No compose hierarchies found"). Passaram depois do desbloqueio, com "Permanecer ativo" ligado.
+
+### Critérios de aceite
+- [x] Gasto e receita por texto, de ponta a ponta, sem internet (`ChatScreenTest`, `ChatAssistantTest`).
+- [x] Nada gravado antes de Confirmar (`nadaEGravadoAntesDeConfirmar`).
+- [x] Um cartão confirmado não confirma de novo (`confirmarGravaUmaVezEOCartaoNaoVaiDeNovo`, edição e UI).
+
+### Observações
+- Os testes de UI usam o banco real do app no aparelho: ficou um lançamento de teste de R$ 12,34 ("Teste de interface"), por isso o histórico do chat é limpo antes de cada teste.
+- Sugestão de categoria simples (palavras-chave). Melhorias com histórico do usuário ficam para a ETAPA 08.
+
 ## v2 · ETAPA 02 — SQLite/Room e regras financeiras
 
 **Status:** **concluída.** 41/41 testes JVM, **29/29 testes instrumentados no POCO X7 Pro** (Android 16) e lint com 0 erros. O banco é criado no app real com 11 categorias padrão e a conta "Carteira".

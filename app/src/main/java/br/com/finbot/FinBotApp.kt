@@ -3,6 +3,7 @@ package br.com.finbot
 import android.app.Application
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
+import br.com.finbot.assistant.ChatAssistant
 import br.com.finbot.config.ConfigRepository
 import br.com.finbot.data.FinBotDatabase
 import br.com.finbot.data.repository.AccountRepository
@@ -41,6 +42,9 @@ class AppContainer(context: Context) {
     val summaryRepository by lazy { SummaryRepository(database) }
     val billRepository by lazy { BillRepository(database, clock, transactionRepository) }
     val pendingActionRepository by lazy { PendingActionRepository(database, clock) }
+    val chatAssistant by lazy {
+        ChatAssistant(database, transactionRepository, summaryRepository, categoryRepository, pendingActionRepository, configRepository, clock)
+    }
 }
 
 class FinBotApp : Application() {

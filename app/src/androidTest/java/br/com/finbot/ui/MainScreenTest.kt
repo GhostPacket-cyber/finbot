@@ -35,7 +35,8 @@ class MainScreenTest {
     @Test
     fun abasMostramPlaceholdersSemDados() {
         completeOnboardingIfShown()
-        rule.onNodeWithText("Em breve (ETAPA 03)").assertIsDisplayed()
+        // A aba Chat agora é funcional (ETAPA 03): mostra o campo de mensagem.
+        rule.onNodeWithText("Mensagem").assertIsDisplayed()
         rule.onNodeWithText("Lançamentos").performClick()
         rule.onNodeWithText("Em breve (ETAPA 05)").assertIsDisplayed()
         rule.onNodeWithText("Contas").performClick()

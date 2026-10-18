@@ -1,6 +1,7 @@
 package br.com.finbot.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -19,10 +20,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.finbot.R
 import br.com.finbot.ui.onboarding.OnboardingScreen
+import br.com.finbot.ui.chat.ChatScreen
 import br.com.finbot.ui.settings.SettingsScreen
 
 enum class MainTab(val label: String, val icon: Int, val comingInStage: String?) {
-    CHAT("Chat", R.drawable.ic_tab_chat, "ETAPA 03"),
+    CHAT("Chat", R.drawable.ic_tab_chat, null),
     TRANSACTIONS("Lançamentos", R.drawable.ic_tab_list, "ETAPA 05"),
     BILLS("Contas", R.drawable.ic_tab_bills, "ETAPA 06"),
     REPORTS("Relatórios", R.drawable.ic_tab_reports, "ETAPA 07"),
@@ -60,10 +62,13 @@ private fun MainScaffold() {
             }
         },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            when (val stage = selected.comingInStage) {
-                null -> SettingsScreen()
-                else -> ComingSoonScreen(title = selected.label, stage = stage)
+        // consumeWindowInsets: o imePadding do chat desconta a barra inferior já reservada.
+        Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+            val stage = selected.comingInStage
+            when {
+                stage != null -> ComingSoonScreen(title = selected.label, stage = stage)
+                selected == MainTab.CHAT -> ChatScreen()
+                else -> SettingsScreen()
             }
         }
     }

@@ -12,6 +12,7 @@ import br.com.finbot.data.repository.CategoryRepository
 import br.com.finbot.data.repository.SummaryRepository
 import br.com.finbot.data.repository.TransactionRepository
 import br.com.finbot.domain.TransactionDraft
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -86,6 +87,30 @@ class PersistenceAndMigrationTest {
         assertNull(row.note)
         assertEquals(-4_590L, SummaryRepository(migrated).balanceCents())
         migrated.close()
+    }
+
+    @Test
+    fun migracaoDeV2ParaV3PreservaHistoricoDoChat() = runTest {
+        helper.createDatabase(FILE_MIGRATE, 2).apply {
+            insert("chat_messages", SQLiteDatabase.CONFLICT_ABORT, ContentValues().apply {
+                put("id", 1); put("role", "USER"); put("text", "gastei 10 no café"); put("created_at", clock.current.toEpochMilli())
+            })
+            close()
+        }
+
+        helper.runMigrationsAndValidate(FILE_MIGRATE, 3, true, MIGRATION_2_3).close()
+
+        val migrated = open(FILE_MIGRATE)
+        val rows = migrated.chatMessageDao().observeRecentWithActions(10).first()
+        assertEquals("gastei 10 no café", rows.single().message.text)
+        assertNull(rows.single().message.quickReply)
+        migrated.close()
+    }
+
+    @Test
+    fun cadeiaCompletaDeV1ParaAtual() = runTest {
+        helper.createDatabase(FILE_MIGRATE, 1).close()
+        helper.runMigrationsAndValidate(FILE_MIGRATE, 3, true, *FinBotDatabase.MIGRATIONS).close()
     }
 
     private companion object {

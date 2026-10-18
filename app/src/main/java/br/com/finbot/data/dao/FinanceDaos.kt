@@ -2,11 +2,13 @@ package br.com.finbot.data.dao
 
 import androidx.room.ColumnInfo
 import androidx.room.Dao
+import androidx.room.Embedded
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import br.com.finbot.data.TransactionKind
+import br.com.finbot.data.TransactionSource
 import br.com.finbot.data.entity.AccountEntity
 import br.com.finbot.data.entity.CategoryEntity
 import br.com.finbot.data.entity.TransactionEntity
@@ -26,6 +28,11 @@ data class CategoryTotal(
     @ColumnInfo(name = "category_name") val categoryName: String?,
     @ColumnInfo(name = "total_cents") val totalCents: Long,
     val count: Int,
+)
+
+data class TransactionWithCategory(
+    @Embedded val transaction: TransactionEntity,
+    @ColumnInfo(name = "category_name") val categoryName: String?,
 )
 
 @Dao
@@ -139,6 +146,26 @@ interface TransactionDao {
         """,
     )
     suspend fun listConfirmedBetween(start: Instant, end: Instant, limit: Int, offset: Int): List<TransactionEntity>
+
+    @Query(
+        """
+        SELECT t.*, c.name AS category_name FROM transactions t LEFT JOIN categories c ON c.id = t.category_id
+        WHERE t.status = 'CONFIRMED' AND t.deleted_at IS NULL
+        ORDER BY t.occurred_at DESC, t.id DESC
+        LIMIT :limit OFFSET :offset
+        """,
+    )
+    suspend fun listRecentConfirmed(limit: Int, offset: Int): List<TransactionWithCategory>
+
+    /** Último lançamento ativo criado pela origem informada (usado por /desfazer). */
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE source = :source AND status = 'CONFIRMED' AND deleted_at IS NULL
+        ORDER BY created_at DESC, id DESC LIMIT 1
+        """,
+    )
+    suspend fun lastActiveBySource(source: TransactionSource): TransactionEntity?
 
     @Query("SELECT * FROM transactions WHERE status = 'PENDING_REVIEW' AND deleted_at IS NULL ORDER BY occurred_at DESC")
     suspend fun listPendingReview(): List<TransactionEntity>
