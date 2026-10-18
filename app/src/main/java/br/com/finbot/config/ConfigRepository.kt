@@ -17,6 +17,7 @@ data class AppConfig(
     val onboardingCompleted: Boolean = false,
     val aiConsentGranted: Boolean = false,
     val aiConsentAt: Instant? = null,
+    val geminiModel: String = ConfigValidator.DEFAULT_GEMINI_MODEL,
 )
 
 class ConfigRepository(private val dataStore: DataStore<Preferences>) {
@@ -28,7 +29,12 @@ class ConfigRepository(private val dataStore: DataStore<Preferences>) {
             onboardingCompleted = prefs[ONBOARDING_DONE] ?: false,
             aiConsentGranted = prefs[AI_CONSENT] ?: false,
             aiConsentAt = prefs[AI_CONSENT_AT]?.let(Instant::ofEpochMilli),
+            geminiModel = prefs[GEMINI_MODEL] ?: ConfigValidator.DEFAULT_GEMINI_MODEL,
         )
+    }
+
+    suspend fun setGeminiModel(model: String) {
+        dataStore.edit { it[GEMINI_MODEL] = model.trim() }
     }
 
     suspend fun saveProfile(displayName: String, timezone: String) {
@@ -63,6 +69,7 @@ class ConfigRepository(private val dataStore: DataStore<Preferences>) {
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_completed")
         val AI_CONSENT = booleanPreferencesKey("ai_consent_granted")
         val AI_CONSENT_AT = longPreferencesKey("ai_consent_at_epoch_ms")
+        val GEMINI_MODEL = stringPreferencesKey("gemini_model")
         val LEGACY_KEYS = listOf(
             longPreferencesKey("authorized_user_1_id"),
             longPreferencesKey("authorized_user_2_id"),

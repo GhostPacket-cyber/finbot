@@ -12,10 +12,14 @@ import br.com.finbot.assistant.ChatAssistant
 import br.com.finbot.assistant.ChatItem
 import br.com.finbot.config.ConfigRepository
 import br.com.finbot.data.entity.CategoryEntity
+import br.com.finbot.security.SecretKind
+import br.com.finbot.security.SecretStatus
+import br.com.finbot.security.SecretStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -30,7 +34,16 @@ data class EditState(
     val today: LocalDate,
 )
 
-class ChatViewModel(private val assistant: ChatAssistant, config: ConfigRepository) : ViewModel() {
+class ChatViewModel(
+    private val assistant: ChatAssistant,
+    config: ConfigRepository,
+    secrets: SecretStore,
+) : ViewModel() {
+
+    /** IA utilizável: consentimento dado e chave legível. Áudio depende disso. */
+    val aiReady: StateFlow<Boolean> = combine(config.config, secrets.statuses) { cfg, s ->
+        cfg.aiConsentGranted && s[SecretKind.GEMINI_API_KEY] is SecretStatus.Configured
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     /** null enquanto o histórico ainda não carregou. */
     val items: StateFlow<List<ChatItem>?> = assistant.observe()
@@ -85,11 +98,15 @@ class ChatViewModel(private val assistant: ChatAssistant, config: ConfigReposito
 
     fun clearHistory() = enqueue { assistant.clearHistory() }
 
+    fun sendAudio(recording: Recording) = enqueue {
+        assistant.sendAudio(recording.file, recording.mimeType, recording.durationSeconds)
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val container = (this[APPLICATION_KEY] as FinBotApp).container
-                ChatViewModel(container.chatAssistant, container.configRepository)
+                ChatViewModel(container.chatAssistant, container.configRepository, container.secretStore)
             }
         }
     }

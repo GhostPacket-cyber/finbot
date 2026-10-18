@@ -26,7 +26,7 @@ sealed interface ParsedCommand {
     data object Help : ParsedCommand
 
     /** Entendemos a intenção, mas falta ou sobra informação. Nada é registrado. */
-    data class Clarify(val question: String) : ParsedCommand
+    data class Clarify(val question: String, val aiCanHelp: Boolean = false) : ParsedCommand
 
     data object Unknown : ParsedCommand
 }
@@ -131,10 +131,11 @@ object CommandParser {
         val noun = if (kind == TransactionKind.EXPENSE) "gasto" else "receita"
         if (amounts.isEmpty()) {
             val example = if (kind == TransactionKind.EXPENSE) "gastei 45,90 no mercado" else "recebi 2.500 de salário"
-            return ParsedCommand.Clarify("Faltou o valor. Exemplo: $example")
+            // A IA pode entender valores por extenso ("quarenta reais").
+            return ParsedCommand.Clarify("Faltou o valor. Exemplo: $example", aiCanHelp = true)
         }
         if (amounts.size > 1) {
-            return ParsedCommand.Clarify("Encontrei mais de um valor. Registre um $noun por vez.")
+            return ParsedCommand.Clarify("Encontrei mais de um valor. Registre um $noun por vez.", aiCanHelp = true)
         }
         val match = amounts.single()
         val cents = Money.parseCents(match.groupValues[1])

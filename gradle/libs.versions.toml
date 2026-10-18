@@ -11,6 +11,8 @@ coroutines = "1.11.0"
 room = "2.8.5"
 # Mínimo exigido pelo room-testing 2.8.5 (bundles de schema); as libs AndroidX trazem 1.7.3.
 serialization = "1.8.1"
+orgJson = "20260814"
+mockwebserver = "5.5.0"
 ksp = "2.3.12"
 junit = "4.13.2"
 androidxTestExtJunit = "1.3.0"
@@ -38,6 +40,9 @@ kotlinx-serialization-bom = { group = "org.jetbrains.kotlinx", name = "kotlinx-s
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+# Só para testes JVM: o android.jar de teste tem org.json vazio (stubs).
+org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
+mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver3", version.ref = "mockwebserver" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

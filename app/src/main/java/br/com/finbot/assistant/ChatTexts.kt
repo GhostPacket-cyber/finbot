@@ -30,6 +30,14 @@ object ChatTexts {
         Nada é registrado sem você tocar em Confirmar.
     """.trimIndent()
 
+    /** Resposta quando a IA foi consultada e não identificou lançamento nem consulta financeira. */
+    val UNKNOWN_AI = """
+        Não identifiquei um gasto, uma receita ou uma consulta nessa mensagem. Exemplos:
+        • comprei um presente de quarenta reais
+        • gastei 12 no café e 35,50 no almoço
+        • quanto gastei este mês?
+    """.trimIndent()
+
     val UNKNOWN = """
         Não entendi. Sem a IA, eu reconheço frases curtas como:
         • gastei 45,90 no mercado
@@ -62,6 +70,30 @@ object ChatTexts {
 
     fun deleted(p: ActionPayload.DeleteTransaction, balanceCents: Long): String =
         "Lançamento excluído: ${p.description} (${Money.format(p.amountCents)}).\n${balanceLine(balanceCents)}"
+
+    const val AI_HINT = "Para frases livres, vários gastos numa mensagem e áudio, ative a IA em Ajustes."
+    const val AUDIO_NEEDS_AI =
+        "Mensagens de voz precisam da IA (Gemini), que está desativada ou sem chave. Ative em Ajustes, ou digite: gastei 45,90 no mercado."
+    const val NOT_SUPPORTED_YET =
+        "Cadastro de contas a pagar e lembretes pelo chat chega em breve. Por enquanto registro gastos e receitas."
+
+    fun audioLabel(seconds: Int) = "🎤 Mensagem de voz ($seconds s)"
+
+    fun heard(transcript: String) = "Entendi: “$transcript”"
+
+    fun batchPrompt(batch: ActionPayload.CreateBatch): String = buildString {
+        append("Registrar ${batch.items.size} lançamentos?\n")
+        batch.items.forEach { append("• ${it.description}: ${Money.format(it.amountCents)} (${kindNoun(it.kind)})\n") }
+        append(batchTotals(batch))
+    }
+
+    fun batchTotals(batch: ActionPayload.CreateBatch): String = listOfNotNull(
+        batch.expenseCents.takeIf { it > 0 }?.let { "Despesas: ${Money.format(it)}" },
+        batch.incomeCents.takeIf { it > 0 }?.let { "Receitas: ${Money.format(it)}" },
+    ).joinToString(" · ")
+
+    fun batchCreated(batch: ActionPayload.CreateBatch, balanceCents: Long): String =
+        "${batch.items.size} lançamentos registrados. ${batchTotals(batch)}.\n${balanceLine(balanceCents)}"
 
     const val ALREADY_RESOLVED = "Esta confirmação já foi usada, cancelada ou expirou. Nada foi alterado."
     const val CANCELLED = "Cancelado. Nada foi registrado."

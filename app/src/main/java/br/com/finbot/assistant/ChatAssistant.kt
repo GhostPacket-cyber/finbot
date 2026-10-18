@@ -17,6 +17,13 @@ import br.com.finbot.domain.InvalidTransactionException
 import br.com.finbot.domain.TransactionDraft
 import br.com.finbot.domain.TransactionRules
 import br.com.finbot.domain.ValidationResult
+import br.com.finbot.gemini.AiInterpretation
+import br.com.finbot.gemini.AiInterpreter
+import br.com.finbot.gemini.AiItem
+import br.com.finbot.gemini.AiOutcome
+import br.com.finbot.gemini.AiReport
+import br.com.finbot.gemini.AllowedCategories
+import br.com.finbot.gemini.AudioInput
 import br.com.finbot.security.SafeLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
@@ -45,8 +52,9 @@ data class ChatItem(
 )
 
 /**
- * Orquestra o chat sem IA: interpreta a mensagem, cria cartões de confirmação e responde a consultas.
- * Nenhuma escrita financeira acontece fora de [confirm]/[confirmEdited], e cada cartão vale uma única vez.
+ * Orquestra o chat: o parser local tenta primeiro; só o que ele não entende vai ao Gemini (se consentido).
+ * Em ambos os casos o resultado vira cartão de confirmação; nenhuma escrita financeira acontece fora de
+ * [confirm]/[confirmEdited], e cada cartão vale uma única vez.
  */
 class ChatAssistant(
     db: FinBotDatabase,
@@ -56,6 +64,7 @@ class ChatAssistant(
     private val pending: PendingActionRepository,
     private val config: ConfigRepository,
     private val clock: Clock,
+    private val ai: AiInterpreter,
 ) {
     private val chat = db.chatMessageDao()
     private val transactionDao = db.transactionDao()
@@ -71,13 +80,109 @@ class ChatAssistant(
         chat.insert(ChatMessageEntity(role = ChatRole.USER, text = text.take(CommandParser.MAX_LENGTH + 1), createdAt = now()))
         val zone = zone()
         val today = now().atZone(zone).toLocalDate()
+        guarded {
+            val parsed = CommandParser.parse(text, today)
+            val aiCanHelp = parsed == ParsedCommand.Unknown || (parsed is ParsedCommand.Clarify && parsed.aiCanHelp)
+            if (aiCanHelp && ai.isReady()) {
+                handleAi(ai.interpretText(text, today, zone, allowedCategories()), zone, today, isAudio = false)
+            } else if (aiCanHelp) {
+                // Sem IA: responde localmente e sugere ativá-la, sem enviar nada.
+                val base = if (parsed is ParsedCommand.Clarify) parsed.question else ChatTexts.UNKNOWN
+                reply(base + "\n" + (ai.missingSetupHint() ?: ChatTexts.AI_HINT))
+            } else {
+                respond(parsed, zone, today)
+            }
+        }
+    }
+
+    /**
+     * Mensagem de voz: exige IA (não há reconhecimento de fala offline). O arquivo é lido e apagado
+     * imediatamente, mesmo em caso de erro; só os bytes da mensagem atual vão ao Gemini.
+     */
+    suspend fun sendAudio(file: java.io.File, mimeType: String, durationSeconds: Int) {
+        val bytes = try {
+            file.readBytes()
+        } finally {
+            file.delete()
+        }
+        chat.insert(ChatMessageEntity(role = ChatRole.USER, text = ChatTexts.audioLabel(durationSeconds), createdAt = now()))
+        if (!ai.isReady()) {
+            reply(ChatTexts.AUDIO_NEEDS_AI)
+            return
+        }
+        val zone = zone()
+        val today = now().atZone(zone).toLocalDate()
+        guarded {
+            handleAi(ai.interpretAudio(AudioInput(bytes, mimeType), today, zone, allowedCategories()), zone, today, isAudio = true)
+        }
+    }
+
+    private suspend fun guarded(block: suspend () -> Unit) {
         try {
-            respond(CommandParser.parse(text, today), zone, today)
+            block()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             SafeLog.e("Falha ao processar mensagem do chat", e)
             reply("Algo deu errado ao processar sua mensagem. Nada foi registrado.")
+        }
+    }
+
+    private suspend fun allowedCategories() = AllowedCategories(
+        expense = categories.listActive(TransactionKind.EXPENSE).map { it.name },
+        income = categories.listActive(TransactionKind.INCOME).map { it.name },
+    )
+
+    /** Converte a interpretação validada em resposta. Números de consultas sempre vêm do SQLite. */
+    private suspend fun handleAi(outcome: AiOutcome, zone: ZoneId, today: LocalDate, isAudio: Boolean) {
+        val interpretation = when (outcome) {
+            is AiOutcome.Failed -> {
+                reply(outcome.message)
+                return
+            }
+            is AiOutcome.Interpreted -> outcome.interpretation
+        }
+        if (isAudio) interpretation.transcript?.let { reply(ChatTexts.heard(it)) }
+        when (interpretation) {
+            is AiInterpretation.Transactions -> proposeFromAi(interpretation.items, zone, today)
+            is AiInterpretation.Report -> respond(
+                when (interpretation.report) {
+                    AiReport.BALANCE -> ParsedCommand.Balance
+                    AiReport.TODAY -> ParsedCommand.Today
+                    AiReport.MONTH -> ParsedCommand.Month
+                    AiReport.RECENT -> ParsedCommand.ListTransactions(1)
+                },
+                zone,
+                today,
+            )
+            is AiInterpretation.Clarification -> reply(interpretation.question)
+            is AiInterpretation.NotSupportedYet -> reply(ChatTexts.NOT_SUPPORTED_YET)
+            is AiInterpretation.Unknown -> reply(ChatTexts.UNKNOWN_AI)
+        }
+    }
+
+    private suspend fun proposeFromAi(items: List<AiItem>, zone: ZoneId, today: LocalDate) {
+        val payloads = items.map { item ->
+            val category = item.category?.let { categories.findByName(it, item.kind) }?.takeIf { !it.archived }
+            ActionPayload.CreateTransaction(
+                kind = item.kind,
+                amountCents = item.amountCents,
+                description = item.description,
+                categoryId = category?.id,
+                categoryName = category?.name,
+                date = item.date,
+                viaAi = true,
+            )
+        }
+        payloads.firstNotNullOfOrNull { validationErrors(it, zone, today) }?.let {
+            reply(it)
+            return
+        }
+        if (payloads.size == 1) {
+            propose(payloads.single(), ChatTexts.createPrompt(payloads.single(), today))
+        } else {
+            val batch = ActionPayload.CreateBatch(payloads)
+            propose(batch, ChatTexts.batchPrompt(batch))
         }
     }
 
@@ -116,7 +221,7 @@ class ChatAssistant(
     }
 
     private suspend fun proposeUndo(zone: ZoneId) {
-        val last = transactionDao.lastActiveBySource(TransactionSource.CHAT)
+        val last = transactionDao.lastActiveBySource(listOf(TransactionSource.CHAT, TransactionSource.AI))
         if (last == null) {
             reply(ChatTexts.NOTHING_TO_UNDO)
             return
@@ -148,8 +253,13 @@ class ChatAssistant(
             pending.confirm(actionId) { action ->
                 when (val payload = ActionPayload.decode(action.payloadJson)) {
                     is ActionPayload.CreateTransaction -> {
-                        transactions.create(draftOf(payload, zone), TransactionSource.CHAT)
+                        transactions.create(draftOf(payload, zone), sourceOf(payload))
                         ChatTexts.created(payload, summaries.balanceCents())
+                    }
+                    // Lote atômico: todos os itens na mesma transação da baixa do cartão; se um falha, nenhum é gravado.
+                    is ActionPayload.CreateBatch -> {
+                        payload.items.forEach { transactions.create(draftOf(it, zone), sourceOf(it)) }
+                        ChatTexts.batchCreated(payload, summaries.balanceCents())
                     }
                     is ActionPayload.DeleteTransaction -> {
                         transactions.softDelete(payload.transactionId)
@@ -175,7 +285,7 @@ class ChatAssistant(
         val outcome = runWrite {
             pending.confirm(actionId) { action ->
                 check(ActionPayload.decode(action.payloadJson) is ActionPayload.CreateTransaction) { "Cartão não editável" }
-                transactions.create(draftOf(final, zone), TransactionSource.CHAT)
+                transactions.create(draftOf(final, zone), sourceOf(final))
                 ChatTexts.created(final, summaries.balanceCents())
             }
         }
@@ -209,6 +319,8 @@ class ChatAssistant(
         val result = TransactionRules.validate(draftOf(p, zone), now())
         return (result as? ValidationResult.Invalid)?.errors?.joinToString(" ")
     }
+
+    private fun sourceOf(p: ActionPayload.CreateTransaction) = if (p.viaAi) TransactionSource.AI else TransactionSource.CHAT
 
     /** Lançamento de hoje usa o instante atual; datas passadas usam meio-dia local, longe das viradas de dia. */
     private fun draftOf(p: ActionPayload.CreateTransaction, zone: ZoneId): TransactionDraft {

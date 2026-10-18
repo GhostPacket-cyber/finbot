@@ -76,7 +76,7 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
     init {
         viewModelScope.launch {
             val saved = container.configRepository.config.first()
-            form.update { it.copy(displayName = saved.displayName, timezone = saved.timezone) }
+            form.update { it.copy(displayName = saved.displayName, timezone = saved.timezone, geminiModel = saved.geminiModel) }
         }
     }
 
@@ -100,6 +100,7 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
                     container.secretStore.put(SecretKind.GEMINI_API_KEY, current.geminiKey)
                 }
                 container.configRepository.saveProfile(current.displayName, current.timezone)
+                container.configRepository.setGeminiModel(current.geminiModel)
                 // A chave não permanece na memória da UI após salva.
                 form.update { it.copy(geminiKey = "") }
                 SafeLog.i("Ajustes salvos")

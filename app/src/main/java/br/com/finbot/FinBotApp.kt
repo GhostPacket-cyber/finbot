@@ -14,7 +14,13 @@ import br.com.finbot.data.repository.SummaryRepository
 import br.com.finbot.data.repository.TransactionRepository
 import br.com.finbot.diagnostics.DeviceDiagnostics
 import br.com.finbot.security.KeystoreSecretCipher
+import br.com.finbot.gemini.AiAvailability
+import br.com.finbot.gemini.AiInterpreter
+import br.com.finbot.gemini.GeminiApi
+import br.com.finbot.gemini.HttpGeminiClient
 import br.com.finbot.security.SafeLog
+import br.com.finbot.security.SecretKind
+import kotlinx.coroutines.flow.first
 import br.com.finbot.security.SecretStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -42,8 +48,21 @@ class AppContainer(context: Context) {
     val summaryRepository by lazy { SummaryRepository(database) }
     val billRepository by lazy { BillRepository(database, clock, transactionRepository) }
     val pendingActionRepository by lazy { PendingActionRepository(database, clock) }
+    val geminiApi: GeminiApi = HttpGeminiClient()
+    val aiInterpreter by lazy {
+        AiInterpreter(geminiApi, availability = {
+            val cfg = configRepository.config.first()
+            if (!cfg.aiConsentGranted) {
+                AiAvailability.NoConsent
+            } else {
+                secretStore.get(SecretKind.GEMINI_API_KEY)?.let { AiAvailability.Ready(it, cfg.geminiModel) } ?: AiAvailability.NoKey
+            }
+        })
+    }
     val chatAssistant by lazy {
-        ChatAssistant(database, transactionRepository, summaryRepository, categoryRepository, pendingActionRepository, configRepository, clock)
+        ChatAssistant(
+            database, transactionRepository, summaryRepository, categoryRepository, pendingActionRepository, configRepository, clock, aiInterpreter,
+        )
     }
 }
 

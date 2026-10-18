@@ -157,15 +157,15 @@ interface TransactionDao {
     )
     suspend fun listRecentConfirmed(limit: Int, offset: Int): List<TransactionWithCategory>
 
-    /** Último lançamento ativo criado pela origem informada (usado por /desfazer). */
+    /** Último lançamento ativo criado por uma das origens informadas (usado por /desfazer). */
     @Query(
         """
         SELECT * FROM transactions
-        WHERE source = :source AND status = 'CONFIRMED' AND deleted_at IS NULL
+        WHERE source IN (:sources) AND status = 'CONFIRMED' AND deleted_at IS NULL
         ORDER BY created_at DESC, id DESC LIMIT 1
         """,
     )
-    suspend fun lastActiveBySource(source: TransactionSource): TransactionEntity?
+    suspend fun lastActiveBySource(sources: List<TransactionSource>): TransactionEntity?
 
     @Query("SELECT * FROM transactions WHERE status = 'PENDING_REVIEW' AND deleted_at IS NULL ORDER BY occurred_at DESC")
     suspend fun listPendingReview(): List<TransactionEntity>

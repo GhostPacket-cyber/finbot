@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -30,6 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -64,6 +66,8 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel(factory = ChatViewModel.Fact
     val name by viewModel.displayName.collectAsStateWithLifecycle()
     var input by rememberSaveable { mutableStateOf("") }
     var confirmClear by rememberSaveable { mutableStateOf(false) }
+    val aiReady by viewModel.aiReady.collectAsStateWithLifecycle()
+    val voice = rememberVoiceInput(aiReady = aiReady, onMaxDuration = viewModel::sendAudio)
 
     fun submit() {
         val text = input.trim()
@@ -89,10 +93,17 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel(factory = ChatViewModel.Fact
 
         Box(Modifier.weight(1f).fillMaxWidth()) {
             val list = items
+            val listState = rememberLazyListState()
+            // Mensagem nova (enviada ou recebida): volta para o fim da conversa, mesmo após rolar ou girar a tela.
+            val newestId = list?.firstOrNull()?.id
+            LaunchedEffect(newestId) {
+                if (newestId != null) listState.animateScrollToItem(0)
+            }
             when {
                 list == null -> Unit
                 list.isEmpty() -> EmptyState(name)
                 else -> LazyColumn(
+                    state = listState,
                     reverseLayout = true,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
@@ -122,24 +133,58 @@ fun ChatScreen(viewModel: ChatViewModel = viewModel(factory = ChatViewModel.Fact
             AssistChip(onClick = { viewModel.send("/mes") }, enabled = !busy, label = { Text("Resumo do mês") })
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedTextField(
-                value = input,
-                onValueChange = { input = it.take(500) },
-                placeholder = { Text("Ex.: gastei 45,90 no mercado") },
-                label = { Text("Mensagem") },
-                maxLines = 4,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { submit() }),
-                modifier = Modifier.weight(1f),
+        if (busy) {
+            Text(
+                "FinBot está pensando…",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp).semantics { liveRegion = LiveRegionMode.Polite },
             )
-            IconButton(onClick = ::submit, enabled = input.isNotBlank() && !busy) {
-                Icon(painterResource(R.drawable.ic_send), contentDescription = "Enviar")
+        }
+
+        if (voice.recording) {
+            RecordingBar(
+                seconds = voice.elapsedSeconds,
+                onCancel = voice::cancel,
+                onSend = { voice.stop()?.let(viewModel::sendAudio) },
+            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it.take(500) },
+                    placeholder = { Text("Ex.: gastei 45,90 no mercado") },
+                    label = { Text("Mensagem") },
+                    maxLines = 4,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { submit() }),
+                    modifier = Modifier.weight(1f),
+                )
+                if (input.isBlank()) {
+                    MicButton(
+                        enabled = !busy,
+                        onStart = voice::requestStart,
+                        onHoldRelease = { voice.stop()?.let(viewModel::sendAudio) },
+                    )
+                } else {
+                    IconButton(onClick = ::submit, enabled = !busy) {
+                        Icon(painterResource(R.drawable.ic_send), contentDescription = "Enviar")
+                    }
+                }
             }
         }
+    }
+
+    if (voice.showAiNeeded) {
+        AlertDialog(
+            onDismissRequest = voice::dismissAiNeeded,
+            title = { Text("Áudio precisa da IA") },
+            text = { Text(ChatTexts.AUDIO_NEEDS_AI) },
+            confirmButton = { TextButton(onClick = voice::dismissAiNeeded) { Text("Entendi") } },
+        )
     }
 
     editing?.let { state ->
@@ -237,6 +282,16 @@ private fun ActionCardView(
                     Text(p.description)
                     Text("Categoria: ${p.categoryName ?: "Sem categoria"}", style = MaterialTheme.typography.bodySmall)
                     Text("Data: ${ChatTexts.date(p.date)}", style = MaterialTheme.typography.bodySmall)
+                }
+                is ActionPayload.CreateBatch -> {
+                    Text("${p.items.size} lançamentos", style = MaterialTheme.typography.labelLarge)
+                    p.items.forEach { item ->
+                        Text(
+                            "${if (item.kind == TransactionKind.EXPENSE) "−" else "+"}${Money.format(item.amountCents)} " +
+                                "${item.description} · ${item.categoryName ?: "Sem categoria"} · ${ChatTexts.date(item.date)}",
+                        )
+                    }
+                    Text(ChatTexts.batchTotals(p), fontWeight = FontWeight.SemiBold)
                 }
                 is ActionPayload.DeleteTransaction -> {
                     Text("Excluir lançamento?", style = MaterialTheme.typography.labelLarge)

@@ -4,6 +4,11 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.room.Room
 import br.com.finbot.assistant.ChatAssistant
 import br.com.finbot.config.ConfigRepository
+import br.com.finbot.gemini.AiAvailability
+import br.com.finbot.gemini.AiInterpreter
+import br.com.finbot.gemini.GeminiApi
+import br.com.finbot.gemini.GeminiOutcome
+import br.com.finbot.gemini.GeminiRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -51,7 +56,10 @@ class TestFinance(val clock: MutableClock = MutableClock(Instant.parse("2026-10-
             File(ApplicationProvider.getApplicationContext<android.content.Context>().cacheDir, "cfg-${System.nanoTime()}.preferences_pb")
         },
     )
-    val assistant = ChatAssistant(db, transactions, summaries, categories, pending, config, clock)
+    val gemini = ScriptedGemini()
+    var aiAvailability: AiAvailability = AiAvailability.NoConsent
+    val ai = AiInterpreter(gemini, availability = { aiAvailability }, backoff = {})
+    val assistant = ChatAssistant(db, transactions, summaries, categories, pending, config, clock, ai)
 
     suspend fun seed() {
         categories.ensureDefaults()
@@ -64,5 +72,16 @@ class TestFinance(val clock: MutableClock = MutableClock(Instant.parse("2026-10-
     fun close() {
         db.close()
         configScope.cancel()
+    }
+}
+
+/** Substitui a API real: devolve respostas roteirizadas e registra o que seria enviado. */
+class ScriptedGemini : GeminiApi {
+    val responses = ArrayDeque<GeminiOutcome>()
+    val requests = mutableListOf<GeminiRequest>()
+
+    override suspend fun generate(apiKey: String, request: GeminiRequest): GeminiOutcome {
+        requests += request
+        return responses.removeFirstOrNull() ?: error("Nenhuma resposta roteirizada")
     }
 }

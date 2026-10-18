@@ -93,6 +93,18 @@ As libs AndroidX traziam `kotlinx-coroutines-core` 1.9.0, enquanto o `kotlinx-co
 - **Retenção:** ações pendentes ficam 30 dias, para o histórico mostrar Confirmado/Cancelado/Expirado; depois são apagadas e a mensagem vira texto simples.
 - **Fila na UI:** as operações do ViewModel passam por um `Mutex`, e os botões ficam desabilitados enquanto há uma em andamento.
 
+## ADR-013 — Integração Gemini (v2 · ETAPA 04)
+
+- **Endpoint:** `POST /v1beta/models/{modelo}:generateContent` com `"store": false`. A Interactions API foi descartada por guardar interações no servidor por padrão.
+- **Sem SDK:** `HttpURLConnection` + `org.json`, sem dependência nova no APK. MockWebServer 3 (5.5.0) e `org.json` (20260814) só nos testes JVM.
+- **Formato estruturado:** `generationConfig.responseFormat.text` (`APPLICATION_JSON` + JSON Schema). O JSON recebido passa de novo por `GeminiResponseValidator`; nunca confiamos no schema do servidor.
+- **Modelo padrão** `gemini-3.5-flash-lite` (estável, mais barato, com plano gratuito), validado por regex para não injetar caminho na URL.
+- **Minimização:** só a mensagem atual (ou o áudio) e os nomes das categorias. Nada de histórico, saldos ou valores anteriores.
+- **Ordem:** parser local primeiro. A IA só é usada para o que ele não resolve (desconhecido, valor ausente, vários valores) e só com consentimento e chave.
+- **Lote:** vários itens viram `CreateBatch`; os totais são calculados em Kotlin, e a confirmação grava todos ou nenhum (mesma transação Room).
+- **Áudio:** AAC/ADTS 16 kHz mono 32 kbps, máx. 60 s, sem conversão. O arquivo fica no cache privado e é apagado logo após a leitura dos bytes.
+- **Erros:** 5xx, timeout e rede têm uma nova tentativa (1 s + jitter); 429 não é repetido e informa o `retryDelay` quando vier. Toda mensagem oferece o caminho sem IA.
+
 ## ADR-006 — Proteção da tela administrativa
 
 `FLAG_SECURE` na `MainActivity` impede screenshots, gravação de tela e a miniatura em "Recentes" da tela que recebe credenciais. Os campos de segredo usam máscara de senha, teclado sem autocorreção, e são limpos após salvar.

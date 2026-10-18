@@ -8,21 +8,30 @@ data class ConfigForm(
     val displayName: String = "",
     val timezone: String = ConfigValidator.DEFAULT_TIMEZONE,
     val geminiKey: String = "",
+    val geminiModel: String = ConfigValidator.DEFAULT_GEMINI_MODEL,
 )
 
 data class ConfigErrors(
     val displayName: String? = null,
     val timezone: String? = null,
     val geminiKey: String? = null,
+    val geminiModel: String? = null,
 ) {
     val hasErrors: Boolean
-        get() = listOf(displayName, timezone, geminiKey).any { it != null }
+        get() = listOf(displayName, timezone, geminiKey, geminiModel).any { it != null }
 }
 
 /** Validação pura (sem Android) dos campos de configuração. */
 object ConfigValidator {
     const val DEFAULT_TIMEZONE = "America/Sao_Paulo"
     const val MAX_DISPLAY_NAME = 40
+
+    /** Estável, mais barato e com nível gratuito (docs consultadas em 18/10/2026). Configurável em Ajustes. */
+    const val DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
+    private val GEMINI_MODEL = Regex("^[a-z0-9][a-z0-9.\\-]{2,63}$")
+
+    fun geminiModelError(raw: String): String? =
+        if (GEMINI_MODEL.matches(raw.trim())) null else "Nome de modelo inválido (ex.: $DEFAULT_GEMINI_MODEL)."
 
     private val GEMINI_KEY_LENGTH = 20..200
 
@@ -64,5 +73,6 @@ object ConfigValidator {
         displayName = displayNameError(form.displayName),
         timezone = timezoneError(form.timezone),
         geminiKey = geminiKeyError(form.geminiKey),
+        geminiModel = geminiModelError(form.geminiModel),
     )
 }

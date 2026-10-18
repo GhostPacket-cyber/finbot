@@ -15,7 +15,7 @@ Documento vivo; o modelo de ameaças completo entra na ETAPA 11 (v2).
 - Proibido registrar conteúdo de mensagens, áudios, valores financeiros ou o nome do usuário.
 
 ## Permissões
-- Nenhuma permissão declarada na v2 · ETAPA 01. Cada uma entra só na etapa que a usa, com justificativa.
+- `INTERNET` (Gemini, ETAPA 04) e `RECORD_AUDIO` (voz, pedida no primeiro uso). Cada permissão entra só na etapa que a usa.
 
 ## Banco de dados
 - `databases/finbot.db` (SQLite/Room) fica no diretório privado do app e é excluído de backup em nuvem e de transferência entre aparelhos (`data_extraction_rules.xml`, `backup_rules.xml`).
@@ -30,5 +30,10 @@ Documento vivo; o modelo de ameaças completo entra na ETAPA 11 (v2).
 - `FLAG_SECURE` em toda a `MainActivity` impede capturas de tela; vira configurável na ETAPA 11.
 
 ## Dados enviados a terceiros
-- Nenhum por enquanto: o app não declara INTERNET.
-- A partir da ETAPA 04, só se o usuário consentir, a mensagem atual é enviada à Gemini API (Google). O consentimento armazena apenas a opção e a data.
+- Somente à Gemini API (Google), somente via HTTPS (`usesCleartextTraffic=false`) e somente com consentimento ativo e chave salva, verificados a cada chamada.
+- Enviado: a mensagem atual (texto ou áudio) e os nomes das categorias. Nunca o histórico, saldos ou outros lançamentos.
+- `"store": false` em toda requisição. No plano gratuito, os termos do Google permitem usar o conteúdo para melhorar os produtos, como o diálogo de consentimento informa.
+- A chave vai no cabeçalho `x-goog-api-key`, nunca na URL; os logs registram só o tipo do erro (ex.: "HTTP 429").
+- Áudio: arquivo temporário no cache privado, apagado logo após a leitura; nada de áudio fica salvo.
+- Prompt injection: o texto do usuário vai marcado como dados; a resposta passa por schema fechado e validação local; a IA nunca grava, só propõe cartões que o usuário confirma.
+- Observação: o HyperOS registra no logcat as teclas **injetadas por ADB**. Isso afeta só testes automatizados, não o uso normal com o teclado virtual.

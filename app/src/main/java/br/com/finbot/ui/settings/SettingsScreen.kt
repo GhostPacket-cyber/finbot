@@ -169,12 +169,12 @@ private fun AiCard(state: SettingsUiState, viewModel: SettingsViewModel) {
 
     SectionCard("Assistente com IA (Gemini)") {
         Text(
-            "Opcional. Sem IA, o assistente entende comandos simples e você usa os formulários. " +
-                "A interpretação por IA será ativada na ETAPA 04.",
+            "Opcional. Com a IA, o chat entende frases livres, vários gastos numa mensagem e áudio. " +
+                "Sem IA, ele entende comandos simples. Tudo continua exigindo sua confirmação.",
             style = MaterialTheme.typography.bodySmall,
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(if (consent) "Envio ao Gemini autorizado" else "Desativada", modifier = Modifier.weight(1f))
+            Text(if (consent) "Envio ao Gemini: ligado" else "Envio ao Gemini: desligado", modifier = Modifier.weight(1f))
             Switch(
                 checked = consent,
                 onCheckedChange = { checked -> if (checked) showConsent = true else viewModel.setAiConsent(false) },
@@ -185,6 +185,13 @@ private fun AiCard(state: SettingsUiState, viewModel: SettingsViewModel) {
             Text(
                 "Autorizado em ${formatInstant(it, zoneOrDefault(state.config.timezone))}",
                 style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        if (!consent && state.geminiStatus is SecretStatus.Configured) {
+            Text(
+                "A chave está salva, mas a IA só funciona depois que você ligar o envio acima.",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
             )
         }
 
@@ -209,6 +216,15 @@ private fun AiCard(state: SettingsUiState, viewModel: SettingsViewModel) {
             "A chave é cifrada com o Android Keystore e nunca é exibida por completo. " +
                 "Chaves guardadas no aparelho não são invioláveis.",
             style = MaterialTheme.typography.bodySmall,
+        )
+        OutlinedTextField(
+            value = state.form.geminiModel,
+            onValueChange = { v -> viewModel.onFormChange { it.copy(geminiModel = v.trim().lowercase()) } },
+            label = { Text("Modelo") },
+            singleLine = true,
+            isError = state.errors.geminiModel != null,
+            supportingText = { Text(state.errors.geminiModel ?: "Padrão: ${ConfigValidator.DEFAULT_GEMINI_MODEL}") },
+            modifier = Modifier.fillMaxWidth(),
         )
         if (state.geminiStatus !is SecretStatus.Missing) {
             TextButton(onClick = { confirmRemoval = true }) { Text("Remover chave") }

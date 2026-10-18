@@ -2,8 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Sem permissões nesta fase. INTERNET entra com o Gemini (ETAPA 04),
-         RECORD_AUDIO com o áudio (ETAPA 04) e POST_NOTIFICATIONS com os lembretes (ETAPA 06). -->
+    <!-- INTERNET: somente HTTPS para a Gemini API (ETAPA 04), usada apenas com consentimento.
+         RECORD_AUDIO: mensagens de voz, pedida no primeiro uso. POST_NOTIFICATIONS entra na ETAPA 06. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:name=".FinBotApp"
@@ -14,6 +16,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="false"
         android:theme="@style/Theme.FinBot"
         tools:targetApi="36">
 
