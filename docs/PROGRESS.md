@@ -1,5 +1,14 @@
 # Progresso
 
+> **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007. Próximo passo: transição da ETAPA 01 (v2).
+
+## Execução no aparelho (2026-10-17)
+- Aparelho: POCO X7 Pro (2412DPC0AG), Android 16 (API 36), HyperOS OS3.0.
+- Para instalar via ADB no HyperOS foi preciso ativar "Instalar via USB" e desativar a verificação de apps antes de instalar no app Segurança. Antes disso, a instalação falhava com `INSTALL_FAILED_USER_RESTRICTED` (`interruptCode = 7` do scanner `com.miui.global.packageinstaller`).
+- `am instrument`: **6/6 testes passaram** (KeystoreSecretCipherTest 4, AdminScreenTest 2), depois da correção do ADR-008. Testes JVM: 30/30.
+- Atenção: na primeira tentativa, `connectedDebugAndroidTest` retornou "BUILD SUCCESSFUL" sem executar testes (falha de instalação). Sempre conferir o relatório.
+- Testes manuais (salvar a configuração, captura de tela bloqueada, logcat) foram interrompidos pela mudança de rumo e serão refeitos na tela de Ajustes da v2.
+
 ## ETAPA 01 — Bootstrap Android e tela administrativa
 
 **Status:** build, testes JVM e lint **passando**. Testes instrumentados compilam, mas **não foram executados** (nenhum aparelho ou emulador conectado). Testes manuais pendentes.

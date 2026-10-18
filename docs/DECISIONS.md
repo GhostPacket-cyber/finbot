@@ -47,6 +47,16 @@ Um `AppContainer` manual em `FinBotApp` cria repositórios e serviços, porque o
 
 O serviço Telegram só existe a partir da ETAPA 03. `NotImplementedBotController` registra o estado **Erro** com a mensagem "Serviço do Telegram ainda não implementado (ETAPA 03)" em vez de simular conexão. Ao abrir o processo, um estado "Conectando/Conectado" persistido é revertido para "Desligado" (`reconcileAfterProcessStart`), para que a tela nunca mostre como ativo um serviço que não está rodando.
 
+## ADR-007 — Mudança de rumo: app isolado em vez de bot Telegram (2026-10-17)
+
+- **Contexto:** o Telegram restringiu a criação do bot para o administrador. Além disso, no aparelho alvo (POCO X7 Pro, HyperOS 3.0) um serviço 24/7 seria frágil.
+- **Decisão:** o FinBot vira um app de finanças isolado, com chat interno (texto e áudio), um usuário por instalação, dados só no aparelho, exportação e importação criptografadas, importação OFX/CSV e leitura opcional de notificações de bancos. Contrato: `Prompt/FINBOT_PROMPT_MESTRE_V2.md`.
+- **Consequências:** saem o token Telegram, a allowlist de IDs, `BotController`/`BotState` e o foreground service. Ficam Keystore/`SecretStore`, DataStore, `SafeLog`, consentimento de IA, diagnóstico e toda a base de build e testes. A transição está descrita na ETAPA 01 da v2.
+
+## ADR-008 — Versão explícita de kotlinx-coroutines
+
+As libs AndroidX traziam `kotlinx-coroutines-core` 1.9.0, enquanto o `kotlinx-coroutines-test` 1.11.0 dos testes instrumentados exigia 1.11 (`NoSuchMethodError: runBlockingK`). O app declara `kotlinx-coroutines-android` 1.11.0 explicitamente, porque também usa coroutines diretamente.
+
 ## ADR-006 — Proteção da tela administrativa
 
 `FLAG_SECURE` na `MainActivity` impede screenshots, gravação de tela e a miniatura em "Recentes" da tela que recebe credenciais. Os campos de segredo usam máscara de senha, teclado sem autocorreção, e são limpos após salvar.
