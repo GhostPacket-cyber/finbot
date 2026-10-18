@@ -1,6 +1,7 @@
 package br.com.finbot.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -37,8 +38,8 @@ class MainScreenTest {
         completeOnboardingIfShown()
         // A aba Chat agora é funcional (ETAPA 03): mostra o campo de mensagem.
         rule.onNodeWithText("Mensagem").assertIsDisplayed()
-        rule.onNodeWithText("Lançamentos").performClick()
-        rule.onNodeWithText("Em breve (ETAPA 05)").assertIsDisplayed()
+        rule.onNode(hasText("Lançamentos") and hasClickAction()).performClick()
+        rule.onNodeWithText("+ Novo lançamento").assertIsDisplayed()
         rule.onNodeWithText("Contas").performClick()
         rule.onNodeWithText("Em breve (ETAPA 06)").assertIsDisplayed()
         rule.onNodeWithText("Relatórios").performClick()

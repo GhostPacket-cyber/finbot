@@ -6,7 +6,11 @@ import br.com.finbot.data.BillOccurrenceStatus
 import br.com.finbot.data.FinBotDatabase
 import br.com.finbot.data.TransactionSource
 import br.com.finbot.data.TransactionStatus
+import br.com.finbot.data.dao.KindTotals
+import br.com.finbot.data.dao.TransactionRow
 import br.com.finbot.data.entity.TransactionEntity
+import br.com.finbot.domain.FilterQuery
+import kotlinx.coroutines.flow.Flow
 import br.com.finbot.domain.InvalidTransactionException
 import br.com.finbot.domain.TransactionDraft
 import br.com.finbot.domain.TransactionRules
@@ -112,6 +116,33 @@ class TransactionRepository(
             audit.record(AuditLogger.TRANSACTION, current.uuid, AuditAction.DELETE, now, mapOf("amount_cents" to current.amountCents))
         }
     }
+
+    /** Desfaz uma exclusão lógica ("Desfazer" do snackbar). Não refaz vínculo com conta paga. */
+    suspend fun restore(id: Long) {
+        val now = now()
+        db.withTransaction {
+            val current = requireNotNull(dao.getById(id)) { "Lançamento inexistente" }
+            if (current.deletedAt == null) return@withTransaction
+            dao.update(current.copy(deletedAt = null, updatedAt = now))
+            audit.record(AuditLogger.TRANSACTION, current.uuid, AuditAction.RESTORE, now, mapOf("amount_cents" to current.amountCents))
+        }
+    }
+
+    /** Confirma vários itens da caixa de revisão: todos ou nenhum. */
+    suspend fun confirmAll(ids: Collection<Long>) = db.withTransaction { ids.forEach { confirm(it) } }
+
+    /** Descarta vários itens da caixa de revisão: todos ou nenhum. */
+    suspend fun discardAll(ids: Collection<Long>) = db.withTransaction { ids.forEach { discard(it) } }
+
+    fun observeFiltered(q: FilterQuery, limit: Int): Flow<List<TransactionRow>> =
+        dao.observeFiltered(q.start, q.end, q.kind?.name, q.categoryId, q.accountId, q.source?.name, q.likePattern, limit)
+
+    fun observeFilteredTotals(q: FilterQuery): Flow<KindTotals> =
+        dao.observeFilteredTotals(q.start, q.end, q.kind?.name, q.categoryId, q.accountId, q.source?.name, q.likePattern)
+
+    fun observePendingReview(): Flow<List<TransactionRow>> = dao.observePendingReview()
+
+    fun observePendingReviewCount(): Flow<Int> = dao.observePendingReviewCount()
 
     /** PENDING_REVIEW → CONFIRMED (passa a contar no saldo). */
     suspend fun confirm(id: Long) = changeStatus(id, TransactionStatus.CONFIRMED, AuditAction.CONFIRM)

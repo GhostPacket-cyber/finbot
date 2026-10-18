@@ -30,6 +30,29 @@ data class CategoryTotal(
     val count: Int,
 )
 
+/** Condição comum da lista filtrada e dos totais (constante de compilação para usar dentro de @Query). */
+const val FILTER_WHERE = """
+    t.status = 'CONFIRMED' AND t.deleted_at IS NULL
+    AND (:start IS NULL OR t.occurred_at >= :start)
+    AND (:end IS NULL OR t.occurred_at < :end)
+    AND (:kind IS NULL OR t.kind = :kind)
+    AND (:categoryId IS NULL OR t.category_id = :categoryId)
+    AND (:accountId IS NULL OR t.account_id = :accountId)
+    AND (:source IS NULL OR t.source = :source)
+    AND (:like IS NULL OR t.description LIKE :like ESCAPE '\' OR t.note LIKE :like ESCAPE '\')
+"""
+
+data class TransactionRow(
+    @Embedded val transaction: TransactionEntity,
+    @ColumnInfo(name = "category_name") val categoryName: String?,
+    @ColumnInfo(name = "account_name") val accountName: String?,
+)
+
+data class CategoryWithUsage(
+    @Embedded val category: CategoryEntity,
+    @ColumnInfo(name = "usage_count") val usageCount: Int,
+)
+
 data class TransactionWithCategory(
     @Embedded val transaction: TransactionEntity,
     @ColumnInfo(name = "category_name") val categoryName: String?,
@@ -57,6 +80,18 @@ interface CategoryDao {
 
     @Query("SELECT * FROM categories WHERE kind = :kind AND archived = 0 ORDER BY name")
     suspend fun listActive(kind: TransactionKind): List<CategoryEntity>
+
+    /** Todas as categorias (inclusive arquivadas) com a contagem de lançamentos ativos. */
+    @Query(
+        """
+        SELECT c.*, (SELECT COUNT(*) FROM transactions t WHERE t.category_id = c.id AND t.deleted_at IS NULL) AS usage_count
+        FROM categories c ORDER BY c.kind DESC, c.archived, c.name
+        """,
+    )
+    fun observeAllWithUsage(): Flow<List<CategoryWithUsage>>
+
+    @Query("SELECT * FROM categories ORDER BY name")
+    fun observeAll(): Flow<List<CategoryEntity>>
 }
 
 @Dao
@@ -76,6 +111,18 @@ interface AccountDao {
 
     @Query("SELECT * FROM accounts WHERE archived = 0 ORDER BY name")
     suspend fun listActive(): List<AccountEntity>
+
+    @Update
+    suspend fun update(account: AccountEntity)
+
+    @Query("SELECT * FROM accounts WHERE name = :name LIMIT 1")
+    suspend fun findByName(name: String): AccountEntity?
+
+    @Query("SELECT COUNT(*) FROM accounts WHERE archived = 0")
+    suspend fun countActive(): Int
+
+    @Query("SELECT * FROM accounts ORDER BY archived, name")
+    fun observeAll(): Flow<List<AccountEntity>>
 }
 
 @Dao
@@ -169,4 +216,60 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE status = 'PENDING_REVIEW' AND deleted_at IS NULL ORDER BY occurred_at DESC")
     suspend fun listPendingReview(): List<TransactionEntity>
+
+    /**
+     * Lista filtrada da tela de lançamentos. Consulta estática: cada filtro é opcional (`:x IS NULL OR ...`)
+     * e o texto do usuário só entra como parâmetro LIKE já escapado. Enums chegam como `name`.
+     */
+    @Query(
+        """
+        SELECT t.*, c.name AS category_name, a.name AS account_name
+        FROM transactions t
+        LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN accounts a ON a.id = t.account_id
+        WHERE $FILTER_WHERE
+        ORDER BY t.occurred_at DESC, t.id DESC
+        LIMIT :limit
+        """,
+    )
+    fun observeFiltered(
+        start: Instant?, end: Instant?, kind: String?, categoryId: Long?, accountId: Long?,
+        source: String?, like: String?, limit: Int,
+    ): Flow<List<TransactionRow>>
+
+    @Query(
+        """
+        SELECT
+            COALESCE(SUM(CASE WHEN t.kind = 'INCOME' THEN t.amount_cents END), 0) AS income_cents,
+            COALESCE(SUM(CASE WHEN t.kind = 'EXPENSE' THEN t.amount_cents END), 0) AS expense_cents,
+            COUNT(*) AS count
+        FROM transactions t
+        WHERE $FILTER_WHERE
+        """,
+    )
+    fun observeFilteredTotals(
+        start: Instant?, end: Instant?, kind: String?, categoryId: Long?, accountId: Long?,
+        source: String?, like: String?,
+    ): Flow<KindTotals>
+
+    @Query(
+        """
+        SELECT t.*, c.name AS category_name, a.name AS account_name
+        FROM transactions t
+        LEFT JOIN categories c ON c.id = t.category_id
+        LEFT JOIN accounts a ON a.id = t.account_id
+        WHERE t.status = 'PENDING_REVIEW' AND t.deleted_at IS NULL
+        ORDER BY t.occurred_at DESC, t.id DESC
+        """,
+    )
+    fun observePendingReview(): Flow<List<TransactionRow>>
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE status = 'PENDING_REVIEW' AND deleted_at IS NULL")
+    fun observePendingReviewCount(): Flow<Int>
+
+    @Query("UPDATE transactions SET category_id = :target, updated_at = :now WHERE category_id = :source")
+    suspend fun remapCategory(source: Long, target: Long, now: Instant): Int
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE account_id = :accountId AND deleted_at IS NULL")
+    suspend fun countByAccount(accountId: Long): Int
 }

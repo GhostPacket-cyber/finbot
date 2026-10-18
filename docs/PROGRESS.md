@@ -2,6 +2,44 @@
 
 > **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007.
 
+## v2 · ETAPA 05 — Telas de gestão
+
+**Status:** **concluída.** 85/85 testes JVM, **67/67 testes instrumentados no POCO X7 Pro** e lint com 0 erros. A tela foi conferida no aparelho, inclusive o botão Voltar.
+
+### Feito
+- **Lançamentos** (aba):
+  - lista reativa com paginação por `LIMIT` crescente (30 por vez, "carregar mais" automático e por botão);
+  - busca na descrição e na observação (texto literal, sem curingas);
+  - filtros de período (este mês, mês passado, 30 dias, ano, tudo), tipo, categoria, conta (se houver mais de uma) e origem;
+  - totais do filtro; estados vazios distintos (sem dados × sem resultado);
+  - datas no fuso do usuário.
+- **Formulário** novo/editar: tipo, valor, descrição, data, categoria (chips), conta e observação. A validação é a mesma do repositório (`TransactionForm`, testável em JVM), e a hora original é preservada se a data não mudar.
+- **Excluir** com diálogo de confirmação, depois exclusão lógica e snackbar **Desfazer** (`restore`, auditado como `RESTORE`).
+- **Revisão:** caixa de `PENDING_REVIEW` com seleção, totais da seleção e confirmar/descartar em lote **atômico**. Banner na lista quando há pendências. Ainda vazia na prática: os itens chegam nas ETAPAS 08/09.
+- **Categorias e contas:** criar, renomear (nomes únicos sem diferenciar maiúsculas), arquivar/reativar e **mesclar** (lançamentos, contas a pagar e orçamentos migram; em orçamento no mesmo mês, o destino prevalece; a origem é arquivada; auditoria `MERGE`). Contas: criar, renomear, arquivar/reativar, sem permitir arquivar a última ativa.
+- Consulta filtrada **estática** com parâmetros opcionais (`FILTER_WHERE`); enums passados por `name`.
+- `versionName` = `0.6.0-v2-etapa05`.
+
+### Testes
+| Suite | Cobre |
+|---|---|
+| `TransactionFilterAndFormTest` (JVM, 7) | períodos (inclusive janeiro → dezembro anterior), escape de busca, conversão para consulta, formulário (hoje × passado × preserva hora), erros de campo |
+| `ManagementTest` (7) | **filtros conferidos contra cálculo manual** (período, tipo, categoria, conta, origem, busca, totais, excluídos e pendentes fora); curingas literais e limite; excluir/restaurar auditados; **correção de lançamento criado pelo chat**; revisão em lote atômica; mesclagem completa; renomear/arquivar/contas |
+| `TransactionsScreenTest` (UI, 3) | criar → editar → excluir → **Desfazer** na tela real; valor inválido não salva; filtro sem resultado → estado vazio → limpar |
+
+### Problemas encontrados e corrigidos
+- O `ExtendedFloatingActionButton` mostrava só o "+" neste aparelho (rótulo invisível). Foi trocado por um FAB simples com texto fixo.
+- O snackbar sumia na hora (o evento era limpo antes de exibir, o que cancelava o `LaunchedEffect`), e com isso o **Desfazer** não aparecia. O mesmo padrão foi corrigido na tela de categorias.
+
+### Critérios de aceite
+- [x] Corrigir um lançamento criado pelo chat (`corrigirLancamentoCriadoPeloChat` e a UI de edição).
+- [x] Filtros batem com consulta e cálculo de teste (`filtrosBatemComCalculoManual`).
+- [x] Exclusão lógica e auditada (`excluirERestaurarSaoAuditados`, `exclusaoLogica…` da ETAPA 02).
+
+### Limitações
+- A busca `LIKE` do SQLite só ignora maiúsculas em letras ASCII: "ação" × "AÇÃO" não casam. Normalização fica para depois, se fizer falta.
+- Restaurar um lançamento que pagava uma conta não refaz o vínculo com a conta (ela continua pendente).
+
 ## v2 · ETAPA 04 — Gemini: texto, áudio e extração segura
 
 **Status:** **concluída.** 78/78 testes JVM, **57/57 instrumentados no POCO X7 Pro** e lint com 0 erros. **Teste manual com a chave real do usuário aprovado** (18/10/2026).

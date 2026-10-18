@@ -105,6 +105,14 @@ As libs AndroidX traziam `kotlinx-coroutines-core` 1.9.0, enquanto o `kotlinx-co
 - **Áudio:** AAC/ADTS 16 kHz mono 32 kbps, máx. 60 s, sem conversão. O arquivo fica no cache privado e é apagado logo após a leitura dos bytes.
 - **Erros:** 5xx, timeout e rede têm uma nova tentativa (1 s + jitter); 429 não é repetido e informa o `retryDelay` quando vier. Toda mensagem oferece o caminho sem IA.
 
+## ADR-014 — Telas de gestão (v2 · ETAPA 05)
+
+- **Paginação sem Paging 3:** `Flow` do Room com `LIMIT` crescente. É reativo a gravações de qualquer origem (chat, formulário) e dispensa uma dependência.
+- **Filtro numa consulta estática** com `(:p IS NULL OR …)`. O texto do usuário só entra como parâmetro LIKE escapado (`SearchPattern`, `ESCAPE '\'`); nunca há SQL montado com texto do usuário.
+- **Navegação por estado** dentro da aba (Lista, Revisão, Categorias/contas) com `BackHandler`. A Navigation Compose segue dispensável.
+- **Salvar no formulário = confirmação explícita** do lançamento manual. Excluir pede confirmação e oferece desfazer.
+- **Mesclar categorias** é a forma de "apagar" uma categoria em uso: tudo migra numa transação e a origem fica arquivada (FK `RESTRICT` impede a exclusão física).
+
 ## ADR-006 — Proteção da tela administrativa
 
 `FLAG_SECURE` na `MainActivity` impede screenshots, gravação de tela e a miniatura em "Recentes" da tela que recebe credenciais. Os campos de segredo usam máscara de senha, teclado sem autocorreção, e são limpos após salvar.

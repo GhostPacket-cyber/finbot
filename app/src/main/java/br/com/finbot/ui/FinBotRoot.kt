@@ -22,10 +22,11 @@ import br.com.finbot.R
 import br.com.finbot.ui.onboarding.OnboardingScreen
 import br.com.finbot.ui.chat.ChatScreen
 import br.com.finbot.ui.settings.SettingsScreen
+import br.com.finbot.ui.transactions.TransactionsTab
 
 enum class MainTab(val label: String, val icon: Int, val comingInStage: String?) {
     CHAT("Chat", R.drawable.ic_tab_chat, null),
-    TRANSACTIONS("Lançamentos", R.drawable.ic_tab_list, "ETAPA 05"),
+    TRANSACTIONS("Lançamentos", R.drawable.ic_tab_list, null),
     BILLS("Contas", R.drawable.ic_tab_bills, "ETAPA 06"),
     REPORTS("Relatórios", R.drawable.ic_tab_reports, "ETAPA 07"),
     SETTINGS("Ajustes", R.drawable.ic_tab_settings, null),
@@ -68,6 +69,7 @@ private fun MainScaffold() {
             when {
                 stage != null -> ComingSoonScreen(title = selected.label, stage = stage)
                 selected == MainTab.CHAT -> ChatScreen()
+                selected == MainTab.TRANSACTIONS -> TransactionsTab()
                 else -> SettingsScreen()
             }
         }

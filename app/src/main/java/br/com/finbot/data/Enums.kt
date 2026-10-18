@@ -24,6 +24,6 @@ enum class PendingActionStatus { PENDING, CONFIRMED, CANCELLED }
 
 enum class ImportSource { OFX, CSV }
 
-enum class AuditAction { CREATE, UPDATE, DELETE, CONFIRM, DISCARD, PAY, UNPAY }
+enum class AuditAction { CREATE, UPDATE, DELETE, CONFIRM, DISCARD, PAY, UNPAY, RESTORE, MERGE }
 
 enum class ChatRole { USER, ASSISTANT, SYSTEM }

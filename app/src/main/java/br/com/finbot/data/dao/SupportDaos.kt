@@ -41,6 +41,9 @@ interface BillDao {
     @Insert
     suspend fun insertBill(bill: BillEntity): Long
 
+    @Query("UPDATE bills SET category_id = :target WHERE category_id = :source")
+    suspend fun remapCategory(source: Long, target: Long): Int
+
     @Query("SELECT * FROM bills WHERE id = :id")
     suspend fun getBill(id: Long): BillEntity?
 
@@ -125,6 +128,13 @@ interface BudgetDao {
 
     @Query("SELECT * FROM budgets WHERE category_id = :categoryId AND month = :month")
     suspend fun find(categoryId: Long, month: String): BudgetEntity?
+
+    /** Ao mesclar: o orçamento da categoria de destino prevalece no mesmo mês; os demais migram. */
+    @Query("DELETE FROM budgets WHERE category_id = :source AND month IN (SELECT month FROM budgets WHERE category_id = :target)")
+    suspend fun deleteConflictingForMerge(source: Long, target: Long): Int
+
+    @Query("UPDATE budgets SET category_id = :target WHERE category_id = :source")
+    suspend fun remapCategory(source: Long, target: Long): Int
 }
 
 @Dao
