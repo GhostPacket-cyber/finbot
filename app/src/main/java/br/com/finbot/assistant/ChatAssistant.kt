@@ -11,6 +11,7 @@ import br.com.finbot.data.dao.ChatRow
 import br.com.finbot.data.entity.ChatMessageEntity
 import br.com.finbot.data.repository.CategoryRepository
 import br.com.finbot.data.repository.PendingActionRepository
+import br.com.finbot.data.repository.ReportRepository
 import br.com.finbot.data.repository.SummaryRepository
 import br.com.finbot.data.repository.TransactionRepository
 import br.com.finbot.domain.InvalidTransactionException
@@ -65,6 +66,7 @@ class ChatAssistant(
     private val config: ConfigRepository,
     private val clock: Clock,
     private val ai: AiInterpreter,
+    private val reports: ReportRepository = ReportRepository(db),
 ) {
     private val chat = db.chatMessageDao()
     private val transactionDao = db.transactionDao()
@@ -191,7 +193,9 @@ class ChatAssistant(
             is ParsedCommand.CreateTransaction -> proposeCreate(command, zone, today)
             ParsedCommand.Balance -> reply(ChatTexts.balance(summaries.balanceCents()))
             ParsedCommand.Today -> reply(ChatTexts.today(summaries.daily(today, zone), today))
-            ParsedCommand.Month -> reply(ChatTexts.month(summaries.monthly(YearMonth.from(today), zone), today))
+            ParsedCommand.Month -> reply(
+                ChatTexts.month(summaries.monthly(YearMonth.from(today), zone), reports.monthly(YearMonth.from(today), zone, today), today),
+            )
             is ParsedCommand.ListTransactions -> listTransactions(command.page, zone)
             ParsedCommand.Bills -> reply(ChatTexts.bills(billDao.listPendingDue(LIST_LIMIT)))
             ParsedCommand.Reminders -> reply(ChatTexts.reminders(reminderDao.listEnabled().take(LIST_LIMIT), zone))

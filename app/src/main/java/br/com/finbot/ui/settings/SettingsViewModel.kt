@@ -76,7 +76,11 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
     init {
         viewModelScope.launch {
             val saved = container.configRepository.config.first()
-            form.update { it.copy(displayName = saved.displayName, timezone = saved.timezone, geminiModel = saved.geminiModel) }
+            // Só preenche se o usuário ainda não mexeu no formulário (a leitura é assíncrona e chegaria por cima da digitação).
+            form.update { current ->
+                if (current != ConfigForm()) current
+                else current.copy(displayName = saved.displayName, timezone = saved.timezone, geminiModel = saved.geminiModel)
+            }
         }
     }
 

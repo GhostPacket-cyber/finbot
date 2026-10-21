@@ -11,6 +11,7 @@ import br.com.finbot.data.repository.BillRepository
 import br.com.finbot.data.repository.CategoryRepository
 import br.com.finbot.data.repository.PendingActionRepository
 import br.com.finbot.data.repository.ReminderRepository
+import br.com.finbot.data.repository.ReportRepository
 import br.com.finbot.scheduling.AndroidNotifier
 import br.com.finbot.scheduling.ReminderProcessor
 import br.com.finbot.scheduling.ReminderScheduler
@@ -51,6 +52,7 @@ class AppContainer(context: Context) {
     val transactionRepository by lazy { TransactionRepository(database, clock, accountRepository) }
     val summaryRepository by lazy { SummaryRepository(database) }
     val billRepository by lazy { BillRepository(database, clock, transactionRepository) }
+    val reportRepository by lazy { ReportRepository(database) }
     val pendingActionRepository by lazy { PendingActionRepository(database, clock) }
     val geminiApi: GeminiApi = HttpGeminiClient()
     val aiInterpreter by lazy {

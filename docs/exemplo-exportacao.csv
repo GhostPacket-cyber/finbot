@@ -1,0 +1,6 @@
+﻿Data;Tipo;Descrição;Categoria;Conta;Valor;Origem;Observação
+05/10/2026;Receita;Salário;Salário;Carteira;5000,00;Manual;
+10/10/2026;Despesa;Luz;Moradia;Carteira;189,90;Conta paga;
+15/10/2026;Despesa;"Mercado; feira";Mercado;Carteira;1234,56;Chat;"linha 1
+linha 2"
+20/10/2026;Despesa;'=SOMA(A1:A2);Outros;Carteira;0,05;Chat com IA;texto com fórmula neutralizada

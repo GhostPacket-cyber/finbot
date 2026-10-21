@@ -42,8 +42,8 @@ class MainScreenTest {
         rule.onNodeWithText("+ Novo lançamento").assertIsDisplayed()
         rule.onNode(hasText("Contas") and hasClickAction()).performClick()
         rule.onNodeWithText("+ Conta").assertIsDisplayed()
-        rule.onNodeWithText("Relatórios").performClick()
-        rule.onNodeWithText("Em breve (ETAPA 07)").assertIsDisplayed()
+        rule.onNode(hasText("Relatórios") and hasClickAction()).performClick()
+        rule.waitUntil(5_000) { exists("Resumo do mês") }
     }
 
     @Test
@@ -60,9 +60,10 @@ class MainScreenTest {
     fun fusoInvalidoEmAjustesMostraErro() {
         completeOnboardingIfShown()
         rule.onAllNodes(hasText("Ajustes"))[0].performClick()
+        rule.waitForIdle() // deixa os ajustes salvos carregarem antes de editar
         rule.onNodeWithText("Fuso horário (Área/Cidade)").performTextReplacement("Marte/Olympus")
         rule.onNodeWithText("Salvar ajustes").performScrollTo().performClick()
-        rule.waitUntil(5_000) { exists("Fuso horário desconhecido.") }
+        rule.waitUntil(10_000) { exists("Fuso horário desconhecido.") }
         // Restaura um valor válido para não afetar outros testes.
         rule.onNodeWithText("Usar fuso do aparelho").performScrollTo().performClick()
     }

@@ -5,7 +5,9 @@ import br.com.finbot.data.dao.BillDueRow
 import br.com.finbot.data.dao.CategoryTotal
 import br.com.finbot.data.dao.TransactionWithCategory
 import br.com.finbot.data.entity.ReminderEntity
+import br.com.finbot.data.repository.MonthlyReport
 import br.com.finbot.data.repository.PeriodSummary
+import br.com.finbot.reports.ReportMath
 import br.com.finbot.domain.Money
 import java.time.LocalDate
 import java.time.ZoneId
@@ -110,6 +112,19 @@ object ChatTexts {
     fun month(summary: PeriodSummary, date: LocalDate): String {
         val name = date.format(MONTH).replaceFirstChar { it.uppercase() }
         return "$name:\n" + summaryBody(summary)
+    }
+
+    /** Resumo mensal do chat com os mesmos números da aba Relatórios. */
+    fun month(summary: PeriodSummary, report: MonthlyReport, date: LocalDate): String {
+        val lines = mutableListOf(month(summary, date))
+        if (summary.transactionCount > 0) {
+            report.expenseVariation?.let { lines += "Despesas vs mês anterior: ${ReportMath.formatPercent(it)}" }
+            report.dailyAverageExpense?.let { lines += "Média diária de despesas: ${Money.format(it)}" }
+        }
+        if (report.billsPending.count > 0) {
+            lines += "Contas pendentes (previsto, fora das despesas): ${report.billsPending.count} · ${Money.format(report.billsPending.cents)}"
+        }
+        return lines.joinToString("\n")
     }
 
     private fun summaryBody(s: PeriodSummary): String {

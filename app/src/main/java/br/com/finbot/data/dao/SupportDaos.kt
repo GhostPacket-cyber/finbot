@@ -39,6 +39,12 @@ data class OccurrenceView(
     @ColumnInfo(name = "bill_created_at") val billCreatedAt: Instant,
 )
 
+data class BillStatusTotal(
+    val status: BillOccurrenceStatus,
+    val count: Int,
+    @ColumnInfo(name = "total_cents") val totalCents: Long,
+)
+
 data class BillDueRow(
     @ColumnInfo(name = "occurrence_id") val occurrenceId: Long,
     val title: String,
@@ -94,6 +100,24 @@ interface BillDao {
         """,
     )
     fun observePaidSince(since: Instant): Flow<List<OccurrenceView>>
+
+    /**
+     * Contas com vencimento em [from, to] por situação. Pagas usam o valor do lançamento (o que de fato saiu);
+     * pendentes, o valor atual da conta, e só de contas ativas.
+     */
+    @Query(
+        """
+        SELECT o.status AS status, COUNT(*) AS count,
+               COALESCE(SUM(CASE WHEN o.status = 'PAID' THEN COALESCE(t.amount_cents, b.amount_cents) ELSE b.amount_cents END), 0) AS total_cents
+        FROM bill_occurrences o
+        JOIN bills b ON b.id = o.bill_id
+        LEFT JOIN transactions t ON t.id = o.linked_transaction_id
+        WHERE o.due_date >= :from AND o.due_date <= :to
+          AND (o.status = 'PAID' OR (o.status = 'PENDING' AND b.active = 1))
+        GROUP BY o.status
+        """,
+    )
+    suspend fun totalsByStatusBetween(from: LocalDate, to: LocalDate): List<BillStatusTotal>
 
     @Query("SELECT * FROM bills WHERE active = 1 ORDER BY title")
     fun observeActiveBills(): Flow<List<BillEntity>>

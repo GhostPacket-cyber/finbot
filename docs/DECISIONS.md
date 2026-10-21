@@ -122,6 +122,14 @@ As libs AndroidX traziam `kotlinx-coroutines-core` 1.9.0, enquanto o `kotlinx-co
 - **Meses curtos:** padrão "último dia do mês", configurável por conta. O dia-âncora é sempre o do primeiro vencimento.
 - **Janela de ocorrências** [hoje − 62, hoje + 40 dias]: evita gerar dezenas de atrasos para uma conta cadastrada com vencimento antigo.
 
+## ADR-016 — Relatórios e exportação (v2 · ETAPA 07)
+
+- **Gráficos em Canvas do Compose**, sem biblioteca: rosca, barras e linha, cada um com `contentDescription` contendo os números e uma alternativa em tabela.
+- **Previsto ≠ realizado:** só lançamentos CONFIRMED entram nas despesas. Contas pendentes aparecem à parte como previsão; contas pagas contam uma vez, pelo lançamento do pagamento.
+- **Agregação por mês no fuso do usuário** com intervalos `[início, fim)` calculados em Kotlin (uma consulta por mês). Agrupar UTC no SQLite erraria a virada de mês.
+- **CSV pt-BR** (BOM, `;`, decimal com vírgula) com **proteção contra injeção de fórmula**, já que descrições podem vir de extratos (ETAPA 08). A gravação é via SAF, sem permissão ampla de armazenamento.
+- **Formulários com carga assíncrona** só aplicam os valores salvos se o usuário ainda não editou.
+
 ## ADR-006 — Proteção da tela administrativa
 
 `FLAG_SECURE` na `MainActivity` impede screenshots, gravação de tela e a miniatura em "Recentes" da tela que recebe credenciais. Os campos de segredo usam máscara de senha, teclado sem autocorreção, e são limpos após salvar.

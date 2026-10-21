@@ -2,6 +2,49 @@
 
 > **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007.
 
+## v2 · ETAPA 07 — Relatórios, gráficos e exportação CSV
+
+**Status:** **concluída.** 102/102 testes JVM, **83/83 instrumentados no POCO X7 Pro (duas rodadas seguidas)** e lint com 0 erros.
+
+### Feito
+- `ReportRepository.monthly`:
+  - receitas, despesas e resultado, mais variação contra o mês anterior (`null` sem base);
+  - média diária de despesas (dias transcorridos no mês corrente, total de dias em meses passados);
+  - despesas por categoria em top 5 + "Demais";
+  - contas **pagas** (pelo valor do lançamento) e **pendentes** (previsto, **fora** das despesas);
+  - despesa acumulada diária × mês anterior; evolução de 6 meses (intervalo no fuso do usuário).
+- `ReportMath` e `CsvExporter`, puros e testados em JVM.
+- Aba **Relatórios** (painel):
+  - seletor de mês (sem meses futuros); resumo; contas do mês; próximas contas (7 dias);
+  - **rosca**, **linha** e **barras** em Canvas, com descrição acessível dos valores e botão **Ver tabela**;
+  - exportação do mês ou de tudo via **SAF** (sem permissão de armazenamento).
+- **CSV:** UTF-8 com BOM, `;`, decimal com vírgula (`1234,56`), datas dd/mm/aaaa no fuso do usuário, cabeçalhos pt-BR, aspas quando há `;`, aspas ou quebra de linha, e **neutralização de fórmulas** (`=`, `+`, `-`, `@`).
+- Chat `/mes`: mesmos números da aba, mais a variação, a média diária e as contas pendentes (previsto).
+- `docs/exemplo-exportacao.csv`: arquivo **fictício** no formato exato do exportador, para abrir no Excel e no Google Planilhas.
+- `versionName` = `0.8.0-v2-etapa07`.
+
+### Testes
+| Suite | Cobre |
+|---|---|
+| `ReportMathAndCsvTest` (JVM, 7) | variação e formato %, média diária, top 5 + Demais preservando o total, série acumulada, CSV (BOM, escape, decimal, fuso), neutralização de fórmulas, CSV vazio |
+| `ReportRepositoryTest` (3) | **cada número conferido contra SQL direto** (receitas, despesas, mês anterior, contagem, evolução mês a mês); conta paga contada uma vez; pendente fora das despesas; sugestão em revisão e excluído fora; caso de borda 31/10 23:59 local; **mês sem dados**; **exportação gravada via ContentResolver e relida**, com soma igual ao SQL |
+| `ReportsScreenTest` (UI) | resumo, contas, exportar, alternância gráfico ↔ tabela, navegação de mês |
+
+### Problemas encontrados e corrigidos
+- **Corrida no `SettingsViewModel`:** a leitura assíncrona dos ajustes salvos sobrescrevia o que o usuário já tinha começado a digitar. Apareceu como falha intermitente de um teste antigo. Agora só preenche se o formulário estiver intocado.
+- O lint acusou o **BOM literal** no código-fonte do exportador. Agora ele é gerado por código.
+- Teste com lançamento em 31/10 e relógio em 21/10: o app **recusou a data futura** (a regra funcionando); o teste foi corrigido.
+
+### Critérios de aceite
+- [x] Relatório conferido com consulta SQL de teste.
+- [x] Dados zerados.
+- [x] Gráficos legíveis, com descrição acessível e alternativa em tabela.
+- [x] Exportação válida (testada por escrita e releitura). Abrir no Excel/Planilhas: **teste manual** com `docs/exemplo-exportacao.csv` ou com um arquivo exportado pelo app.
+
+### Limitações
+- O relatório é recalculado ao abrir ou voltar à aba e ao trocar de mês, não em tempo real.
+- Busca e agrupamentos seguem as limitações já registradas (ETAPA 05).
+
 ## v2 · ETAPA 06 — Contas, recorrência e lembretes
 
 **Status:** **concluída.** 95/95 testes JVM, **79/79 instrumentados no POCO X7 Pro** e lint com 0 erros. Verificado no aparelho: notificações reais postadas no canal `contas_lembretes`, toque abrindo a aba Contas e o job periódico do WorkManager registrado e executado.
