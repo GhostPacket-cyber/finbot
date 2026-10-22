@@ -125,4 +125,4 @@ Evidências e números medidos estão em [docs/TEST_PLAN.md](docs/TEST_PLAN.md).
 Projeto pessoal, sem fins comerciais. Começou como um bot do Telegram e virou um app isolado (por privacidade e para não depender de terceiros). Foi desenvolvido em etapas com testes em cada uma, com auxílio do [Claude Code](https://claude.com/claude-code).
 
 ## Licença
-[MIT](LICENSE) © 2026 Luis Felipe
+[MIT](LICENSE) © 2026 Luis Felipe Souza Siqueira
