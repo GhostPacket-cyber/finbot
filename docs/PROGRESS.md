@@ -26,6 +26,12 @@
   - `docs/ENTREGA.md`: checklist, validação final, problemas conhecidos, plano de evolução.
 - **Testes:** `AboutScreenTest` (UI).
 
+### Instalação limpa (2026-10-22, autorizada pelo usuário após exportar o backup)
+- A versão de depuração e o APK de testes foram desinstalados e o release 1.0.0 foi instalado: primeiro uso exibido, 11 categorias padrão criadas, leitura de notificações desativada, nenhuma falha no log, abertura a frio de 299 ms (release; a depuração levava ~690 ms).
+- **Achado:** textos desatualizados no primeiro uso ("exportação criptografada … estará disponível em uma próxima versão") e no chat ("contas a pagar … chega em breve"). Corrigidos na **1.0.1** (`versionCode` 101), instalada por cima da 1.0.0 sem perder dados.
+- APK final: `E:\Bot Telegram\entrega\FinBot-1.0.1.apk`, SHA-256 `72b269913bf6aae6ae7a404ba81308bc48cfef4f04f55b1384ea2477f1227fec`.
+- A suíte instrumentada (129/129) rodou na 1.0.0 em depuração; a 1.0.1 muda só textos (157/157 JVM, lint sem erros). Rodar a suíte de novo exigiria trocar o release pela depuração, o que apaga os dados.
+
 ### Importante
 - **Guarde a pasta `chaves` e o `keystore.properties`** (por exemplo, numa cópia fora do computador). Sem a chave e a senha, nenhuma atualização futura instala por cima do 1.0.0.
 

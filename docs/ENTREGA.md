@@ -10,7 +10,7 @@
 | Manual do usuário | ✅ | `docs/MANUAL.md` |
 | Tela Sobre (versão, licenças, privacidade) | ✅ | Ajustes › Sobre › Privacidade, avisos e licenças |
 | Changelog | ✅ | `CHANGELOG.md` |
-| Testes automatizados | ✅ | 157 JVM + 128 instrumentados (POCO X7 Pro, duas rodadas); lint sem erros (`docs/TEST_PLAN.md`) |
+| Testes automatizados | ✅ | 157 JVM + 129 instrumentados (POCO X7 Pro); lint sem erros (`docs/TEST_PLAN.md`) |
 | Segurança e privacidade documentadas | ✅ | `docs/SECURITY.md` (limites e modelo de ameaças) |
 | Problemas conhecidos e plano de evolução | ✅ | Abaixo |
 
