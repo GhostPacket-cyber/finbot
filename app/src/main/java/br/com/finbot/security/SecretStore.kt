@@ -49,6 +49,12 @@ class SecretStore(
         dataStore.edit { it.remove(keyOf(kind)) }
     }
 
+    /** "Apagar tudo": remove todos os segredos e a chave do Keystore. */
+    suspend fun clearAll() {
+        dataStore.edit { it.clear() }
+        cipher.destroyKey()
+    }
+
     /** Apaga segredos de versões anteriores (v1) que não existem mais em [SecretKind]. */
     suspend fun removeLegacy() {
         dataStore.edit { prefs -> LEGACY_KEYS.forEach { prefs.remove(stringPreferencesKey(it)) } }

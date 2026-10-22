@@ -2,6 +2,57 @@
 
 > **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007.
 
+## v2 · ETAPA 11 — Segurança, privacidade, exportar e importar
+
+**Status:** **implementada e testada de forma automatizada.**
+- JVM: 146/146 testes passaram.
+- POCO X7 Pro: **121/121 testes instrumentados passaram**.
+- Lint: 0 erros.
+- Falta no aparelho, **pelo usuário** (exige biometria e senha digitadas por ele): desbloquear com biometria e exportar/importar pela tela. Roteiro em `TEST_PLAN.md`.
+
+### Feito
+- **Bloqueio do app** (`AppLock` + `BiometricPrompt`, `MainActivity` agora é `FragmentActivity`):
+  - pede biometria ou a credencial do aparelho ao abrir e após 0/1/5/15/30 min em segundo plano;
+  - rotação não conta;
+  - bloqueado, nenhuma tela com dados é composta;
+  - ligar exige autenticar na hora.
+- **`FLAG_SECURE` configurável** (padrão ligado), aplicado ao vivo pela `MainActivity`.
+- **Exportar `.finbot`** (`BackupService` + `BackupCrypto`):
+  - retrato consistente: banco e WAL copiados com as escritas bloqueadas, depois compactados num arquivo só;
+  - manifesto com versão do schema, data, versão do app, SHA-256, contagem e soma por tabela, e saldo;
+  - AES-256-GCM com chave por PBKDF2-HMAC-SHA256 (600 mil iterações, sal aleatório), cabeçalho como AAD;
+  - salvo pelo SAF onde o usuário escolher.
+- **Importar:**
+  - confere a senha e a tag, o SHA-256, o `integrity_check`, a versão (mais nova é recusada) e os totais do manifesto;
+  - migra pelo Room se o backup for de schema anterior.
+  - **Substituir:** tudo numa transação (FKs adiadas), com os totais conferidos antes de confirmar. Confirmação dupla: aviso e depois digitar SUBSTITUIR.
+  - **Mesclar:** por `uuid`, com prévia que roda a mesma mesclagem e desfaz. Regra: o que já existe no aparelho prevalece. Categorias e contas de mesmo nome são unificadas; lançamentos com a mesma `dedup_key` são ignorados; ids são remapeados (inclusive o vínculo conta paga → lançamento).
+- **Lembrete de backup** a cada N dias (padrão 30; 0 desliga), pelo chat e pela notificação de alertas. Aviso fixo de que desinstalar, limpar os dados ou perder o aparelho apaga o que não foi exportado.
+- **Apagar tudo** (digitar APAGAR):
+  - apaga o banco (inclusive o chat), as preferências, os segredos e a **chave do Keystore**;
+  - também as notificações e os temporários, e desativa a leitura de notificações;
+  - recria só as categorias padrão; o app volta ao primeiro uso.
+- **Limpeza de temporários** ao abrir o app (cache de áudio e de backup com mais de 1 hora; banco de importação esquecido).
+- **Limites e modelo de ameaças** revisados em `docs/SECURITY.md`.
+- Dependências: `androidx.biometric:1.1.0` (a última estável; as seguintes são alpha) e `androidx.fragment:1.9.1`.
+- `versionName` = `0.12.0-v2-etapa11`.
+
+### Testes
+| Suite | Cobre |
+|---|---|
+| `BackupCryptoTest` (JVM, 8) | ida e volta; senha errada; adulteração no conteúdo, na tag e no cabeçalho (AAD); formato inválido; iterações fora dos limites; senha curta; manifesto em JSON; política do bloqueio (abertura a frio, 59 s / 60 s, "sempre"); lembrete de backup (períodos e chave) |
+| `BackupServiceTest` (7) | **exportar no "aparelho" A e substituir no B reproduz os totais** (incluindo saldo, pendentes, excluídos e o vínculo da conta paga); escrita ainda no WAL entra no backup; **senha errada e arquivo adulterado não alteram nada**; manifesto forjado (totais, hash) e versão mais nova são recusados; **mesclar duas vezes não duplica**; backup do schema v3 é migrado; **apagar tudo** limpa banco, ajustes, segredo e chave do Keystore |
+| `SecurityScreensTest` (UI, 2) | **com o bloqueio ligado, só a tela de bloqueio aparece** (nenhum dado); a tela de backup recusa senha curta e não exporta |
+
+### Problemas encontrados e corrigidos
+- Restaurar um backup de schema antigo falhava na conferência: as tabelas criadas pela migração (ex.: `csv_presets`) não constam no manifesto antigo. Agora tabelas ausentes contam como 0 linhas.
+
+### Decisões e limitações
+- **PBKDF2** em vez de Argon2: o Argon2 exigiria uma biblioteca nativa a mais. O PBKDF2-HMAC-SHA256 com 600 mil iterações segue a recomendação OWASP 2023 e é nativo do Android. Senha esquecida = backup irrecuperável.
+- O banco ativo continua sem criptografia própria (SQLCipher ficou fora; ADR-020); a proteção é o sandbox, a criptografia do Android e o bloqueio do app.
+- O backup não leva ajustes nem a chave da Gemini: ao trocar de aparelho, é preciso configurá-los de novo.
+- No Android 8 e 9 a biometria aparece no diálogo da biblioteca. Não foi testado (o aparelho de teste é Android 16).
+
 ## v2 · ETAPA 10 — Alertas inteligentes (regras determinísticas)
 
 **Status:** **concluída.**

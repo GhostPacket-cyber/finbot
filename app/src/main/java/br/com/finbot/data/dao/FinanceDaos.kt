@@ -309,6 +309,9 @@ interface TransactionDao {
     )
     suspend fun listActiveExpensesBetween(start: Instant, end: Instant): List<TransactionEntity>
 
+    @Query("SELECT MIN(created_at) FROM transactions WHERE deleted_at IS NULL")
+    suspend fun firstCreatedAt(): Instant?
+
     @Query("SELECT * FROM transactions WHERE import_batch_id = :batchId ORDER BY id")
     suspend fun listByBatch(batchId: Long): List<TransactionEntity>
 

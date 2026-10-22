@@ -11,6 +11,9 @@ import javax.crypto.spec.GCMParameterSpec
 interface SecretCipher {
     fun encrypt(plain: ByteArray): ByteArray
     fun decrypt(blob: ByteArray): ByteArray
+
+    /** Apaga a chave (ex.: "Apagar tudo"). Segredos cifrados com ela ficam ilegíveis. */
+    fun destroyKey() {}
 }
 
 /**
@@ -38,6 +41,11 @@ class KeystoreSecretCipher(private val alias: String = DEFAULT_ALIAS) : SecretCi
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(TAG_BITS, iv))
         return cipher.doFinal(blob, 1 + IV_SIZE, blob.size - 1 - IV_SIZE)
+    }
+
+    override fun destroyKey() {
+        val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+        if (keyStore.containsAlias(alias)) keyStore.deleteEntry(alias)
     }
 
     private fun getOrCreateKey(): SecretKey {

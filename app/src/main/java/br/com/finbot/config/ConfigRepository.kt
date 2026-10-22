@@ -26,6 +26,20 @@ data class AppConfig(
     val bankNotificationPackages: Set<String> = emptySet(),
     /** Alertas inteligentes (ETAPA 10). */
     val alerts: AlertSettings = AlertSettings(),
+    /** Segurança e backup (ETAPA 11). */
+    val security: SecuritySettings = SecuritySettings(),
+)
+
+data class SecuritySettings(
+    /** Pede biometria ou a credencial do aparelho ao abrir e após [lockTimeoutMinutes] em segundo plano. */
+    val appLock: Boolean = false,
+    /** 0 = sempre que voltar ao app. */
+    val lockTimeoutMinutes: Int = 1,
+    /** FLAG_SECURE: bloqueia capturas, gravação de tela e a miniatura em Recentes. */
+    val secureScreen: Boolean = true,
+    /** Lembrete para exportar a cada N dias (0 = desligado). */
+    val backupReminderDays: Int = 30,
+    val lastExportAt: Instant? = null,
 )
 
 /** Cada alerta liga e desliga separadamente. Limites validados em [AlertSettings.sanitized]. */
@@ -76,6 +90,13 @@ class ConfigRepository(private val dataStore: DataStore<Preferences>) {
                 notify = prefs[ALERT_NOTIFY] ?: true,
                 aiRewrite = prefs[ALERT_AI] ?: false,
             ).sanitized(),
+            security = SecuritySettings(
+                appLock = prefs[SEC_LOCK] ?: false,
+                lockTimeoutMinutes = (prefs[SEC_LOCK_MINUTES] ?: 1).coerceIn(0, 60),
+                secureScreen = prefs[SEC_SECURE_SCREEN] ?: true,
+                backupReminderDays = (prefs[SEC_BACKUP_DAYS] ?: 30).coerceIn(0, 365),
+                lastExportAt = prefs[SEC_LAST_EXPORT]?.let(Instant::ofEpochMilli),
+            ),
         )
     }
 
@@ -129,6 +150,29 @@ class ConfigRepository(private val dataStore: DataStore<Preferences>) {
         }
     }
 
+    suspend fun setSecurity(block: (SecuritySettings) -> SecuritySettings) {
+        dataStore.edit { prefs ->
+            val current = SecuritySettings(
+                appLock = prefs[SEC_LOCK] ?: false,
+                lockTimeoutMinutes = prefs[SEC_LOCK_MINUTES] ?: 1,
+                secureScreen = prefs[SEC_SECURE_SCREEN] ?: true,
+                backupReminderDays = prefs[SEC_BACKUP_DAYS] ?: 30,
+                lastExportAt = prefs[SEC_LAST_EXPORT]?.let(Instant::ofEpochMilli),
+            )
+            val s = block(current)
+            prefs[SEC_LOCK] = s.appLock
+            prefs[SEC_LOCK_MINUTES] = s.lockTimeoutMinutes.coerceIn(0, 60)
+            prefs[SEC_SECURE_SCREEN] = s.secureScreen
+            prefs[SEC_BACKUP_DAYS] = s.backupReminderDays.coerceIn(0, 365)
+            if (s.lastExportAt == null) prefs.remove(SEC_LAST_EXPORT) else prefs[SEC_LAST_EXPORT] = s.lastExportAt.toEpochMilli()
+        }
+    }
+
+    /** "Apagar tudo": remove todas as preferências (o app volta ao primeiro uso). */
+    suspend fun clearAll() {
+        dataStore.edit { it.clear() }
+    }
+
     /** Remove chaves de versões anteriores (v1, bot de mensagens) que não têm mais uso. */
     suspend fun removeLegacyKeys() {
         dataStore.edit { prefs -> LEGACY_KEYS.forEach { prefs.remove(it) } }
@@ -154,6 +198,11 @@ class ConfigRepository(private val dataStore: DataStore<Preferences>) {
         val ALERT_WEEKLY_MINUTE = intPreferencesKey("alert_weekly_minute")
         val ALERT_NOTIFY = booleanPreferencesKey("alert_notify")
         val ALERT_AI = booleanPreferencesKey("alert_ai_rewrite")
+        val SEC_LOCK = booleanPreferencesKey("sec_app_lock")
+        val SEC_LOCK_MINUTES = intPreferencesKey("sec_lock_minutes")
+        val SEC_SECURE_SCREEN = booleanPreferencesKey("sec_secure_screen")
+        val SEC_BACKUP_DAYS = intPreferencesKey("sec_backup_reminder_days")
+        val SEC_LAST_EXPORT = longPreferencesKey("sec_last_export_ms")
         val LEGACY_KEYS = listOf(
             longPreferencesKey("authorized_user_1_id"),
             longPreferencesKey("authorized_user_2_id"),

@@ -118,6 +118,9 @@ class AlertProcessor(
             }
         }
 
+        val security = config().security
+        AlertRules.backupReminder(security.lastExportAt, transactions.firstCreatedAt(), security.backupReminderDays, now)?.let { alerts += it }
+
         if (settings.weekly) {
             val time = LocalTime.of(settings.weeklyMinuteOfDay / 60, settings.weeklyMinuteOfDay % 60)
             AlertRules.weeklyKey(now, zone, settings.weeklyDay, time)?.let { key ->

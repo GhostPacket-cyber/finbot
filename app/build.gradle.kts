@@ -20,7 +20,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.11.0-v2-etapa10"
+        versionName = "0.12.0-v2-etapa11"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -70,6 +70,8 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.fragment)
     ksp(libs.androidx.room.compiler)
     // Alinha kotlinx-serialization entre app e testes instrumentados (ADR-010).
     implementation(platform(libs.kotlinx.serialization.bom))

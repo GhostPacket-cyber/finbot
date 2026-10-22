@@ -12,7 +12,7 @@ import java.time.YearMonth
 import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 
-enum class AlertType { BUDGET, DUPLICATE_CHARGE, SUBSCRIPTION, UNUSUAL_SPENDING, WEEKLY_SUMMARY }
+enum class AlertType { BUDGET, DUPLICATE_CHARGE, SUBSCRIPTION, UNUSUAL_SPENDING, WEEKLY_SUMMARY, BACKUP_REMINDER }
 
 /**
  * Alerta calculado por regra. [key] garante entrega única (`notification_log`).
@@ -206,6 +206,28 @@ object AlertRules {
         if (f.billsNext7Days > 0) parts += "Contas nos próximos 7 dias: ${f.billsNext7Days} (${Money.format(f.billsNext7DaysCents)})."
         if (f.pendingReview > 0) parts += "${f.pendingReview} sugestão(ões) esperando revisão."
         return Alert(key, AlertType.WEEKLY_SUMMARY, "Resumo da semana", parts.joinToString(" "))
+    }
+
+    // ---------- 6. Lembrete de backup (ETAPA 11) ----------
+
+    /**
+     * A cada [days] dias desde o último backup (ou desde o primeiro lançamento, se nunca exportou).
+     * A chave inclui o período: repete a cada [days] dias enquanto não houver novo backup.
+     */
+    fun backupReminder(lastExportAt: Instant?, firstDataAt: Instant?, days: Int, now: Instant): Alert? {
+        if (days <= 0) return null
+        val anchor = lastExportAt ?: firstDataAt ?: return null
+        val elapsedDays = Duration.between(anchor, now).toDays()
+        val periods = elapsedDays / days
+        if (periods < 1) return null
+        val since = if (lastExportAt == null) "Você ainda não exportou um backup" else "Faz $elapsedDays dias desde o último backup"
+        return Alert(
+            key = "alert:backup:${anchor.toEpochMilli()}:$periods",
+            type = AlertType.BACKUP_REMINDER,
+            title = "Hora de exportar um backup",
+            text = "$since. Desinstalar o app, limpar os dados ou perder o aparelho apaga o que não foi exportado. " +
+                "Exporte em Ajustes › Backup e segurança.",
+        )
     }
 
     // ---------- Apoio ----------

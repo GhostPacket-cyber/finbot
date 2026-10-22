@@ -52,6 +52,8 @@ class AppContainer(context: Context) {
     val configRepository = ConfigRepository(context.configDataStore)
     val secretStore = SecretStore(context.secretsDataStore, KeystoreSecretCipher())
     val diagnostics = DeviceDiagnostics(context)
+    /** Bloqueio do app (ETAPA 11): estado por processo. */
+    val appLock = br.com.finbot.security.AppLock()
 
     val database: FinBotDatabase by lazy { FinBotDatabase.build(context) }
     val categoryRepository by lazy { CategoryRepository(database, clock) }
@@ -94,6 +96,9 @@ class AppContainer(context: Context) {
         )
     }
 
+    val backupService by lazy {
+        br.com.finbot.backup.BackupService(context, database, context.getDatabasePath(FinBotDatabase.FILE_NAME), clock, BuildConfig.VERSION_NAME)
+    }
     val alertNotifier by lazy { AndroidAlertNotifier(context) }
     val alertProcessor by lazy {
         AlertProcessor(
@@ -124,6 +129,7 @@ class FinBotApp : Application() {
         container = AppContainer(this)
         appScope.launch { removeLegacyData() }
         appScope.launch { prepareDatabase() }
+        appScope.launch { br.com.finbot.backup.DataMaintenance.cleanTemporaries(this@FinBotApp, java.time.Instant.now()) }
         container.notifier.createChannel()
         container.suggestionNotifier.createChannel()
         container.alertNotifier.createChannel()

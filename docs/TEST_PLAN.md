@@ -2,6 +2,28 @@
 
 Contrato vigente: `Prompt/FINBOT_PROMPT_MESTRE_V2.md`.
 
+## ETAPA 11 (v2) — Segurança, backup e importação
+
+### JVM
+| Classe | Cobre |
+|---|---|
+| `BackupCryptoTest` (8) | criptografia, adulteração, limites, manifesto, política de bloqueio, lembrete de backup |
+
+### Instrumentados
+| Classe | Cobre |
+|---|---|
+| `BackupServiceTest` (7) | A → B reproduz os totais; WAL; senha errada e adulteração sem efeito; manifesto forjado e versão nova recusados; mesclar 2× sem duplicar; migração do v3; apagar tudo |
+| `SecurityScreensTest` (2) | tela de bloqueio sem dados; senha curta recusada |
+
+### Manuais no aparelho (o usuário digita senha e biometria; não usar ADB para senhas, porque o HyperOS registra as teclas injetadas)
+1. Ajustes › **Backup e segurança** › **Bloquear o app** → autenticar → "Bloquear de novo após: voltar ao app" → ir à tela inicial e voltar → biometria pedida; cancelar → continua bloqueado; "Desbloquear" → entra.
+2. **Proteger a tela** desligado → print funciona; ligado → print bloqueado.
+3. **Exportar backup** com uma senha → salvar em Downloads → "Último backup" atualizado.
+4. **Importar backup** do mesmo arquivo com a senha **errada** → "Senha incorreta ou arquivo alterado." e nada muda.
+5. Importar com a senha certa → a prévia mostra "0 novo(s)" (os dados já existem) → **Mesclar** → nada duplica.
+6. Opcional (troca de aparelho): em outro aparelho ou após **Apagar tudo**, importar → **Substituir** (digitar SUBSTITUIR) → conferir o saldo e as contagens.
+7. **Apagar todos os dados** só com um backup feito antes (digitar APAGAR) → o app volta ao primeiro uso.
+
 ## ETAPA 10 (v2) — Alertas inteligentes
 
 ### JVM

@@ -60,6 +60,11 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
     val context = LocalContext.current
     var showBank by rememberSaveable { mutableStateOf(false) }
     var showAlerts by rememberSaveable { mutableStateOf(false) }
+    var showBackup by rememberSaveable { mutableStateOf(false) }
+    if (showBackup) {
+        BackupScreen(onBack = { showBackup = false })
+        return
+    }
     if (showAlerts) {
         AlertsScreen(onBack = { showAlerts = false })
         return
@@ -106,6 +111,14 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
             }
 
             AiCard(state, viewModel)
+
+            SectionCard("Backup e segurança") {
+                Text(
+                    "Bloqueio do app, proteção de tela, exportar e importar backup criptografado e apagar tudo.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedButton(onClick = { showBackup = true }) { Text("Abrir backup e segurança") }
+            }
 
             SectionCard("Alertas") {
                 Text(

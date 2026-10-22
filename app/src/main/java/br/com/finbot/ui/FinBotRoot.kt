@@ -39,6 +39,8 @@ enum class MainTab(val label: String, val icon: Int, val comingInStage: String?)
 fun FinBotRoot(
     tabRequest: MainTab? = null,
     onTabRequestHandled: () -> Unit = {},
+    locked: Boolean = false,
+    onUnlockRequest: () -> Unit = {},
     viewModel: AppViewModel = viewModel(factory = AppViewModel.Factory),
 ) {
     val config by viewModel.config.collectAsStateWithLifecycle()
@@ -48,6 +50,9 @@ fun FinBotRoot(
     } else if (!loaded.onboardingCompleted) {
         val errors by viewModel.onboardingErrors.collectAsStateWithLifecycle()
         OnboardingScreen(errors = errors, onComplete = viewModel::completeOnboarding)
+    } else if (loaded.security.appLock && locked) {
+        // Nada com dados financeiros é composto enquanto bloqueado.
+        LockScreen(onUnlockRequest)
     } else {
         MainScaffold(tabRequest, onTabRequestHandled)
     }

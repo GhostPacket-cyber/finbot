@@ -165,3 +165,15 @@ As libs AndroidX traziam `kotlinx-coroutines-core` 1.9.0, enquanto o `kotlinx-co
 - **Orçamento vigente = o definido mais recentemente até o mês** (`budgets` já tinha `month`). Remover grava limite 0 a partir do mês, preservando o histórico de meses anteriores.
 - **Reescrita por IA verificada:** a resposta precisa ter o mesmo multiconjunto de números do original. É simples, local e impede que a IA "corrija" um valor.
 - **Execução junto do `ReminderWorker`** (30 min) em vez de outro job, para não criar mais um agendamento periódico.
+
+## ADR-020 — Backup `.finbot`, mesclagem e bloqueio (v2 · ETAPA 11)
+
+- **Retrato do banco:** copiar o arquivo e o `-wal` dentro de uma transação do Room (nenhuma outra escrita é confirmada nesse intervalo) e depois aplicar o WAL na cópia (`wal_checkpoint` + `journal_mode=DELETE`). Funciona do Android 8 em diante, enquanto o `VACUUM INTO` exige SQLite 3.27 (Android 11+).
+- **Formato:** `FINBOTX1` + cabeçalho JSON (KDF e parâmetros) + AES-256-GCM. O cabeçalho é AAD: trocar parâmetros invalida a tag. Senha errada e adulteração dão o mesmo erro, de propósito.
+- **KDF:** PBKDF2-HMAC-SHA256 com 600 mil iterações (OWASP 2023), nativo do Android. Argon2id seria preferível, mas exigiria uma biblioteca nativa. O parâmetro fica no cabeçalho, para subir no futuro sem quebrar arquivos antigos. Limites de 100 mil a 5 milhões evitam DoS por arquivo malicioso.
+- **Importar nunca mexe no banco atual antes de tudo conferido.** A cópia recebida é validada (tag, SHA-256, `integrity_check`, versão, totais) e aberta pelo Room com as migrações. Só então se substitui ou mescla, numa transação.
+- **Substituir copia linhas, não troca o arquivo:** trocar o arquivo com o app aberto quebraria o Room e os Flows; a cópia em transação mantém as telas reativas e é atômica.
+- **Mesclar: o que existe neste aparelho prevalece.** União por `uuid`; categorias e contas de mesmo nome são unificadas; mesma `dedup_key` = mesmo lançamento; nada local é sobrescrito. A prévia executa a mesma mesclagem dentro de uma transação e desfaz, então mostra exatamente o que será gravado.
+- **Fora do backup:** a chave da Gemini (segredo do aparelho), os ajustes e o histórico do chat. Fora da mesclagem também: as ações pendentes, o registro de notificações e a auditoria.
+- **Banco ativo sem SQLCipher:** depende do sandbox, da criptografia do Android e do bloqueio do app. O SQLCipher traria uma biblioteca nativa grande e a gestão de mais uma chave. Reavaliar se o app sair do uso pessoal.
+- **Bloqueio:** `BIOMETRIC_WEAK | DEVICE_CREDENTIAL` (aceito do Android 8 ao 16). O estado fica por processo: um processo novo começa bloqueado. Se o aparelho perder o bloqueio de tela, o app não tranca o usuário fora (não há como autenticar).
