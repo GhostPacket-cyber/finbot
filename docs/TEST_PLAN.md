@@ -2,6 +2,34 @@
 
 Contrato vigente: `Prompt/FINBOT_PROMPT_MESTRE_V2.md`.
 
+## ETAPA 09 (v2) — Notificações de banco
+
+### JVM
+| Classe | Cobre |
+|---|---|
+| `BankNotificationParserTest` (6) | padrões de compra, Pix, TED e pagamento com amostras sintéticas; rejeições; data e hora |
+
+### Instrumentados
+| Classe | Cobre |
+|---|---|
+| `BankNotificationIngestorTest` (6) | portão antes da leitura; sugestão em revisão; dedup; sem texto bruto; serviço desativado no manifesto |
+| `BankNotificationsScreenTest` (1) | tela explicativa; teste de texto sem gravar; abrir não liga |
+
+### Ponta a ponta no aparelho (build de depuração)
+1. Ajustes › **Configurar notificações de banco** → ligar **Ler notificações de banco**.
+2. **Conceder acesso no Android** → ativar o FinBot (o usuário faz; é um ajuste de segurança).
+3. Marcar **Teste via ADB** na lista.
+4. Postar notificações sintéticas:
+   ```bash
+   adb shell cmd notification post -t "Compra aprovada" teste1 "Compra de R\$ 45,90 APROVADA em PADARIA TESTE para o cartão com final 1234."
+   ```
+   O resultado esperado: aparece o aviso "Nova sugestão: R$ 45,90 em PADARIA TESTE — Revisar", e o item fica em Lançamentos › revisar.
+5. Repetir o mesmo comando no mesmo minuto → nenhuma sugestão nova.
+6. `adb shell cmd notification post teste2 "Seu código é 123456"` → nada.
+7. Desligar a chave → postar de novo → nada (o serviço é desativado).
+8. `adb logcat -s FinBot` → nenhum valor, estabelecimento ou texto.
+9. Opcional: uma compra real com Nubank, Inter ou Caixa marcado. Se não virar sugestão, colar o texto em **Testar um texto** (sem dados sensíveis) para ajustar o padrão.
+
 ## ETAPA 08 (v2) — Importação OFX/CSV
 
 ### JVM

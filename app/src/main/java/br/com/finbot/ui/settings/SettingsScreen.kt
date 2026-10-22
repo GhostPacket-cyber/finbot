@@ -58,6 +58,11 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
+    var showBank by rememberSaveable { mutableStateOf(false) }
+    if (showBank) {
+        BankNotificationsScreen(onBack = { showBank = false })
+        return
+    }
 
     LifecycleResumeEffect(Unit) {
         viewModel.refreshDiagnostics()
@@ -96,6 +101,14 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
             }
 
             AiCard(state, viewModel)
+
+            SectionCard("Notificações de banco") {
+                Text(
+                    "Sugere lançamentos a partir das notificações de compra e Pix dos apps de banco que você escolher. Desligado por padrão.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedButton(onClick = { showBank = true }) { Text("Configurar notificações de banco") }
+            }
 
             Button(onClick = viewModel::save, enabled = !state.saving, modifier = Modifier.fillMaxWidth()) {
                 Text(if (state.saving) "Salvando…" else "Salvar ajustes")

@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.lifecycleScope
+import br.com.finbot.notifications.BankNotificationListener
 import br.com.finbot.security.SafeLog
 import br.com.finbot.ui.FinBotRoot
 import br.com.finbot.ui.MainTab
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         val container = (application as FinBotApp).container
+        BankNotificationListener.requestRebindIfNeeded(this)
         lifecycleScope.launch {
             try {
                 container.reminderProcessor.run()

@@ -144,3 +144,14 @@ As libs AndroidX traziam `kotlinx-coroutines-core` 1.9.0, enquanto o `kotlinx-co
 - **Possível duplicata de lançamento manual** (sem chave, mesmo tipo e valor, ±2 dias) vem desmarcada. Comparar descrições de banco e de usuário gera falsos negativos demais.
 - **Categoria:** o histórico do usuário vence as palavras-chave. A IA é só por botão e envia apenas tipo e descrição; a resposta passa por schema fechado e validação local.
 - **Schema v4** só com `ALTER TABLE ADD COLUMN` e uma tabela nova. `import_batch_id` não tem FK, para não recriar a tabela `transactions`; a integridade fica no repositório.
+
+## ADR-018 — Notificações de banco (v2 · ETAPA 09)
+
+- **Componente desativado no manifesto** e ativado só pela chave do app. É uma garantia mais forte que um `if` no código: com o recurso desligado, o sistema não entrega notificação alguma, mesmo que o acesso tenha sido concedido antes.
+- **Portão antes da leitura:** o ingestor recebe o conteúdo como função e só a chama depois de conferir chave e pacote. Os testes contam as leituras.
+- **Padrões em regex, sem IA.** O que não casa é ignorado. Mandar à IA texto de notificação bancária seria um vazamento desnecessário.
+- **Rejeitar é mais seguro que aceitar:** termos como recusada, estorno, código, agendado e fatura descartam a notificação inteira.
+- **Dedup por minuto**, como pede o prompt. A repostagem da mesma notificação (comum nos apps de banco) não duplica.
+- **Lista de pacotes via `<queries>`** em vez de `QUERY_ALL_PACKAGES`: menor superfície e aceito pela Play.
+- **Aviso privado na tela bloqueada:** valor e estabelecimento só aparecem com o aparelho desbloqueado.
+- A opção **"Teste via ADB"** existe só em `BuildConfig.DEBUG`, para validar o caminho real do serviço sem notificações de bancos de verdade.

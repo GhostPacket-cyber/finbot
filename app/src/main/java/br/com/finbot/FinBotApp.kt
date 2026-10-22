@@ -25,6 +25,8 @@ import br.com.finbot.gemini.AiCategorizer
 import br.com.finbot.gemini.AiInterpreter
 import br.com.finbot.gemini.GeminiApi
 import br.com.finbot.gemini.HttpGeminiClient
+import br.com.finbot.notifications.AndroidSuggestionNotifier
+import br.com.finbot.notifications.BankNotificationIngestor
 import br.com.finbot.security.SafeLog
 import br.com.finbot.security.SecretKind
 import kotlinx.coroutines.flow.first
@@ -77,6 +79,18 @@ class AppContainer(context: Context) {
         java.time.ZoneId.of("America/Sao_Paulo")
     }
 
+    val suggestionNotifier by lazy { AndroidSuggestionNotifier(context) }
+    val bankNotificationIngestor by lazy {
+        BankNotificationIngestor(
+            config = { configRepository.config.first() },
+            zone = { userZone() },
+            transactions = transactionRepository,
+            imports = importRepository,
+            notifier = suggestionNotifier,
+            ownPackage = context.packageName,
+        )
+    }
+
     val chatAssistant by lazy {
         ChatAssistant(
             database, transactionRepository, summaryRepository, categoryRepository, pendingActionRepository, configRepository, clock, aiInterpreter,
@@ -96,6 +110,7 @@ class FinBotApp : Application() {
         appScope.launch { removeLegacyData() }
         appScope.launch { prepareDatabase() }
         container.notifier.createChannel()
+        container.suggestionNotifier.createChannel()
         ReminderScheduler.schedule(this)
         SafeLog.i("Aplicativo iniciado")
     }

@@ -261,11 +261,17 @@ class ImportRepository(
 
     private fun historyKey(kind: TransactionKind, description: String) = "$kind|${CategorySuggester.normalize(description)}"
 
-    private fun suggestCategory(item: StatementItem, history: History): Pair<Long?, CategoryOrigin?> {
-        history.byDescription[historyKey(item.kind, item.description)]?.let { return it to CategoryOrigin.HISTORY }
-        val name = CategorySuggester.suggest(item.kind, item.description)
+    /** Categoria para uma descrição avulsa (ex.: notificação de banco): histórico do usuário, depois palavra-chave. */
+    suspend fun suggestCategory(kind: TransactionKind, description: String): Long? =
+        suggestCategory(kind, description, categoryHistory()).first
+
+    private fun suggestCategory(item: StatementItem, history: History) = suggestCategory(item.kind, item.description, history)
+
+    private fun suggestCategory(kind: TransactionKind, description: String, history: History): Pair<Long?, CategoryOrigin?> {
+        history.byDescription[historyKey(kind, description)]?.let { return it to CategoryOrigin.HISTORY }
+        val name = CategorySuggester.suggest(kind, description)
         if (name == CategorySuggester.FALLBACK) return null to null
-        return history.byName[item.kind to name]?.let { it to CategoryOrigin.KEYWORD } ?: (null to null)
+        return history.byName[kind to name]?.let { it to CategoryOrigin.KEYWORD } ?: (null to null)
     }
 
     private class NothingImported(val skipped: Int) : RuntimeException()

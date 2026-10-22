@@ -2,13 +2,64 @@
 
 > **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007.
 
+## v2 · ETAPA 09 — Leitura opcional de notificações de banco
+
+**Status:** **implementada e testada de forma automatizada; falta o teste ponta a ponta no aparelho.**
+- JVM: 128/128 testes passaram.
+- POCO X7 Pro: **102/102 testes instrumentados passaram**. Isso inclui a nova rodada de `ImportRepositoryTest`/`ImportScreenTest` que estava pendente da ETAPA 08.
+- Lint: 0 erros.
+- Falta o teste ponta a ponta no aparelho: conceder o acesso a notificações é um ajuste de segurança do Android e cabe ao usuário. Roteiro em `TEST_PLAN.md`.
+
+### Feito
+- **Desligado por padrão, em duas camadas:**
+  1. O `BankNotificationListener` nasce com `android:enabled="false"` no manifesto; enquanto o usuário não liga o recurso no app, o Android nem conecta o serviço.
+  2. Mesmo ligado, o portão (`BankNotificationIngestor`) confere a chave e a lista **antes** de acessar o conteúdo.
+- Desligar a chave desativa o componente de novo.
+- **Tela Ajustes › Notificações de banco:**
+  - explica o que é lido, que nada sai do aparelho e como revogar;
+  - chave liga/desliga;
+  - estado do acesso e atalho para a tela do sistema;
+  - instrução sobre "configurações restritas" no Android 13+;
+  - lista só os apps de banco instalados (`<queries>` com 10 pacotes, sem `QUERY_ALL_PACKAGES`);
+  - **"Testar um texto"**: mostra o que seria extraído e não grava nada.
+- **Portão:** só pacotes marcados pelo usuário. O próprio FinBot nunca é lido. Resumos de grupo e notificações fixas são ignorados.
+- **`BankNotificationParser`** (puro, sem IA): compra no crédito e no débito, Pix enviado e recebido, transferência recebida e pagamento. Extrai valor, estabelecimento ou contraparte e data e hora (do texto, quando há; senão, o horário da notificação, nunca no futuro).
+  - **Rejeita:** recusada, negada, cancelada, estorno, código, senha, token, agendado, fatura e limite.
+  - Se nada casar, a notificação é ignorada; nada é enviado à IA.
+- **Sugestão `PENDING_REVIEW`** com origem `BANK_NOTIFICATION`:
+  - categoria pelo histórico do usuário e por palavras-chave;
+  - dedup `notif:` + `sha256(pacote|valor com sinal|estabelecimento normalizado|minuto)`.
+- **Aviso do FinBot:** "Nova sugestão: R$ 45,90 em PADARIA — Revisar".
+  - Canal `sugestoes_banco`, de baixa importância.
+  - Na tela bloqueada aparece só "Nova sugestão de lançamento" (`VISIBILITY_PRIVATE` com versão pública).
+  - O toque abre Lançamentos, onde fica o cartão de revisão.
+- **Nada do texto bruto é guardado:** só os campos extraídos. Os logs dizem apenas "virou sugestão".
+- Ao abrir o app, `requestRebind` é chamado se o recurso estiver ligado (o HyperOS pode derrubar o serviço).
+- Builds de depuração: a opção "Teste via ADB" (`com.android.shell`) permite testar no aparelho com `adb shell cmd notification post`. Ela não existe no release.
+- `versionName` = `0.10.0-v2-etapa09`.
+
+### Testes
+| Suite | Cobre |
+|---|---|
+| `BankNotificationParserTest` (JVM, 6) | amostras sintéticas no estilo Nubank, Itaú e outros (crédito, débito, Pix enviado e recebido, TED, pagamento); recusas, códigos, agendamentos, estorno, fatura e promoção ignorados; data e hora do texto, ano anterior, nunca no futuro |
+| `BankNotificationIngestorTest` (6) | **desligado: o conteúdo nem é lido**; app fora da lista ou o próprio FinBot: descartado sem leitura; sugestão `PENDING_REVIEW` com categoria e saldo inalterado; **repostagem não duplica nem avisa de novo**; descartada não volta; outro minuto gera nova sugestão; texto não reconhecido ignorado; **nenhum trecho do texto bruto no banco ou na auditoria**; serviço desativado no manifesto |
+| `BankNotificationsScreenTest` (UI) | explicação e revogação visíveis; "Testar um texto" extrai e não grava; abrir a tela não liga o recurso |
+
+### Android 15+ e HyperOS (pesquisa de 2026-10-22)
+- **Android 15+:** notificações marcadas como sensíveis (códigos de verificação, detectados pelo sistema) chegam a listeners não confiáveis só como aviso de "conteúdo oculto". Ler o conteúdo exige a permissão `RECEIVE_SENSITIVE_NOTIFICATIONS`, que é `role|signature` e não está disponível para o FinBot. Isso não afeta compras e Pix. Para o FinBot é até desejável: códigos já são rejeitados pelo parser.
+- **Android 13+ ("configurações restritas"):** apps instalados fora de uma loja por sessão podem ter o acesso a notificações bloqueado até o usuário permitir em Informações do app. A tela do FinBot explica o caminho.
+- **HyperOS:** a economia de bateria pode encerrar o serviço; o app pede `requestRebind` ao abrir. Ainda falta confirmar no POCO, no teste manual.
+- **Bancos instalados no aparelho de teste:** Nubank, Inter e Caixa (pacotes do catálogo confirmados). Os textos reais **não** foram usados nos testes (só amostras sintéticas). Bancos testados com notificação real: nenhum ainda.
+
+### Limitações
+- **Os textos dos bancos mudam sem aviso.** Se o padrão deixar de casar, a notificação é ignorada (falha segura). O recurso "Testar um texto" ajuda a diagnosticar.
+- Duas compras iguais no mesmo estabelecimento e no mesmo minuto viram uma só sugestão: é a chave pedida pelo prompt.
+- A notificação do banco precisa chegar ao aparelho (app do banco com notificações ativas). Notificações já apagadas antes de ligar o recurso não são lidas.
+- Os pacotes do catálogo que não estão no aparelho de teste (Itaú, Bradesco, C6, Santander, BB, Mercado Pago, PicPay) não foram confirmados.
+
 ## v2 · ETAPA 08 — Importação de extratos OFX/CSV
 
-**Status:** **concluída, com uma pendência pequena no aparelho.**
-- JVM: 122/122 testes passaram.
-- POCO X7 Pro: **95/95 testes instrumentados passaram**, mais um teste manual por ADB com o seletor de arquivos real.
-- Lint: 0 erros.
-- Pendência: rodar de novo `ImportRepositoryTest` e `ImportScreenTest` no aparelho depois da correção de API 26 apontada pelo lint (ver "Problemas"). O celular foi desconectado antes dessa rodada.
+**Status:** **concluída.** 122/122 testes JVM, 95/95 instrumentados no POCO X7 Pro e lint com 0 erros. Depois da correção de API 26 (ver "Problemas"), `ImportRepositoryTest` e `ImportScreenTest` passaram de novo no aparelho em 2026-10-22, na rodada da ETAPA 09.
 
 ### Feito
 - **Leitura do arquivo**

@@ -29,6 +29,14 @@ Documento vivo; o modelo de ameaças completo entra na ETAPA 11 (v2).
 - Descrições vindas de extratos são tratadas como dados: nunca viram SQL (parâmetros do Room), e a exportação CSV neutraliza fórmulas (ADR-016).
 - O botão "Sugerir categorias com IA" envia à Gemini API **só o tipo (despesa/receita) e a descrição** dos itens sem categoria, além dos nomes das categorias. Valores, datas, conta e nome do arquivo nunca saem do aparelho.
 
+## Notificações de banco
+- O recurso é desligado por padrão. O serviço (`BankNotificationListener`) nasce desativado no manifesto e só é ativado pela chave do app; o acesso é concedido pelo usuário nas configurações do Android e pode ser revogado ali ou pela chave.
+- Notificações de apps fora da lista escolhida são descartadas antes de qualquer leitura do conteúdo. O próprio FinBot nunca é lido.
+- O texto bruto não é guardado nem registrado: o banco recebe só valor, estabelecimento ou contraparte, data e uma chave de dedup em hash. Os logs não têm conteúdo.
+- Nada é enviado à IA ou para fora do aparelho.
+- O aviso de sugestão não mostra valor nem estabelecimento na tela bloqueada.
+- Android 15+: códigos de verificação ficam ocultos para listeners de terceiros (o FinBot não pede `RECEIVE_SENSITIVE_NOTIFICATIONS`).
+
 ## Backup e exportação
 - O backup automático do Android (nuvem e transferência entre aparelhos) está desativado.
 - Desinstalar o app ou limpar seus dados apaga tudo. A exportação e importação criptografadas entram na ETAPA 11.

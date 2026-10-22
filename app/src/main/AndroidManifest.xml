@@ -4,10 +4,26 @@
 
     <!-- INTERNET: somente HTTPS para a Gemini API (ETAPA 04), usada apenas com consentimento.
          RECORD_AUDIO: mensagens de voz, pedida no primeiro uso.
-         POST_NOTIFICATIONS: avisos de contas e lembretes, pedida ao salvar a primeira conta ou lembrete. -->
+         POST_NOTIFICATIONS: avisos de contas e lembretes, pedida ao salvar a primeira conta ou lembrete.
+         Leitura de notificações de banco (ETAPA 09): não é permissão comum; o usuário concede "Acesso a notificações"
+         nas configurações do Android, e o serviço nasce desativado (android:enabled="false"). -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Visibilidade só dos apps de banco do catálogo (BankApps), para listar os instalados. Sem QUERY_ALL_PACKAGES. -->
+    <queries>
+        <package android:name="com.nu.production" />
+        <package android:name="com.itau" />
+        <package android:name="com.bradesco" />
+        <package android:name="br.com.intermedium" />
+        <package android:name="com.c6bank.app" />
+        <package android:name="com.santander.app" />
+        <package android:name="br.com.gabba.Caixa" />
+        <package android:name="br.com.bb.android" />
+        <package android:name="com.mercadopago.wallet" />
+        <package android:name="com.picpay" />
+    </queries>
 
     <application
         android:name=".FinBotApp"
@@ -31,5 +47,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".notifications.BankNotificationListener"
+            android:enabled="false"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>
