@@ -26,8 +26,8 @@ android {
         applicationId = "br.com.finbot"
         minSdk = 26
         targetSdk = 36
-        versionCode = 101
-        versionName = "1.0.1"
+        versionCode = 102
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "br.com.finbot.FinBotTestRunner"
     }
@@ -67,6 +67,20 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric (capturas do README) precisa dos recursos do app nos testes JVM.
+        unitTests.isIncludeAndroidResources = true
+        // As capturas do README (Robolectric) só rodam quando pedidas; fora disso ficam fora da suíte.
+        if (System.getenv("FINBOT_SCREENSHOTS") != "1") {
+            unitTests.all { it.exclude("**/screenshots/**") }
+        }
+        // Só nas capturas: o Robolectric se perde com espaços no caminho do usuário (ex.: "Luis Felipe").
+        if (System.getenv("FINBOT_SCREENSHOTS") == "1") {
+            unitTests.all {
+                it.systemProperty("user.home", System.getenv("FINBOT_TEST_HOME") ?: "E:/gtmp/robolectric-home")
+                // JDK 25: o Robolectric acessa internos de java.io/java.lang por reflexão.
+                it.jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED", "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/java.lang=ALL-UNNAMED", "--add-opens=java.base/java.util=ALL-UNNAMED", "--add-opens=java.base/java.nio=ALL-UNNAMED")
+            }
+        }
     }
 
     // Os extratos sintéticos de teste (OFX/CSV) ficam num só lugar e também servem aos testes instrumentados.
@@ -102,6 +116,13 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.org.json)
     testImplementation(libs.mockwebserver)
+    // Capturas de tela do README renderizadas na JVM (ScreenshotsTest; só roda com FINBOT_SCREENSHOTS=1).
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)

@@ -2,6 +2,11 @@
 
 Versões internas por etapa do prompt mestre v2. Datas no formato aaaa-mm-dd.
 
+## 1.0.2 — 2026-10-22
+- **Correção:** o rótulo "Lançamentos" da barra inferior quebrava em duas linhas em telas de ~400 dp. Achado nas capturas do README.
+- Capturas do README geradas a partir do app real na JVM (Robolectric + Roborazzi), com dados fictícios (`ScreenshotsTest`, só roda com `FINBOT_SCREENSHOTS=1`).
+- Licença MIT; README para o GitHub.
+
 ## 1.0.1 — 2026-10-22
 - Textos desatualizados corrigidos, achados na instalação limpa do release: o primeiro uso dizia que o backup criptografado "estará disponível em uma próxima versão", e o chat dizia que contas e lembretes "chegam em breve" (já existem na aba Contas).
 

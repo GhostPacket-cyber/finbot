@@ -17,7 +17,7 @@ Registre gastos conversando ("gastei 45,90 no mercado"), acompanhe contas a paga
   <img src="docs/images/backup.png" width="23%" alt="Backup e segurança">
 </p>
 
-<sub>Capturas feitas num emulador com dados fictícios.</sub>
+<sub>Telas reais do app renderizadas na JVM (Robolectric + Roborazzi) com dados fictícios. Para gerar de novo: `FINBOT_SCREENSHOTS=1 ./gradlew testDebugUnitTest --tests br.com.finbot.screenshots.ScreenshotsTest`.</sub>
 
 ## Funcionalidades
 - **Chat em português, sem IA:** `gastei 45,90 no mercado`, `recebi 2.500 de salário`, `paguei 120 de luz ontem`, `/saldo`, `/mes`, `/gastos`, `/desfazer`. Tudo vira um **cartão de confirmação**: nada é gravado sem o seu toque.
