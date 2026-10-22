@@ -1,4 +1,4 @@
-# Entrega — FinBot 1.0.1
+# Entrega — FinBot 1.0.2
 
 ## Checklist
 | Item | Situação | Evidência |
