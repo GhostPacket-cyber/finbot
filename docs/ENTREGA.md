@@ -34,7 +34,7 @@
 ## Problemas conhecidos e limitações
 1. A bateria em 24 h e os cenários manuais de resiliência (reinício, economia de bateria, sem internet, troca de fuso, armazenamento cheio, extratos reais) ainda não foram executados (roteiro em TEST_PLAN, ETAPA 12).
 2. Os padrões de notificação e o mapeamento de CSV foram testados com **amostras sintéticas**. Textos e formatos reais dos bancos podem exigir ajuste (use "Testar um texto" e os modelos de CSV).
-3. Pacotes do catálogo de bancos não confirmados num aparelho: Itaú, Bradesco, C6, Santander, BB, Mercado Pago e PicPay. Confirmados: Nubank, Inter e Caixa.
+3. Dos 10 pacotes do catálogo de bancos, só 3 foram confirmados num aparelho real; os demais seguem os nomes públicos e podem mudar.
 4. O banco local não tem criptografia própria; a proteção vem do sandbox do Android, da criptografia do aparelho e do bloqueio do app (ADR-020).
 5. Trocar a versão de depuração pela release exige desinstalar (assinaturas diferentes). Exporte o backup antes.
 6. Desligar a leitura de notificações faz o Android retirar o acesso; ao religar, é preciso conceder de novo.

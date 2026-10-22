@@ -125,7 +125,7 @@ Aparelho: POCO X7 Pro (Xiaomi 2412DPC0AG), Android 16, HyperOS 3.0. Data: 2026-1
 6. `adb shell cmd notification post teste2 "Seu código é 123456"` → nada.
 7. Desligar a chave → postar de novo → nada (o serviço é desativado).
 8. `adb logcat -s FinBot` → nenhum valor, estabelecimento ou texto.
-9. Opcional: uma compra real com Nubank, Inter ou Caixa marcado. Se não virar sugestão, colar o texto em **Testar um texto** (sem dados sensíveis) para ajustar o padrão.
+9. Opcional: uma compra real com um banco marcado. Se não virar sugestão, colar o texto em **Testar um texto** (sem dados sensíveis) para ajustar o padrão.
 
 ## ETAPA 08 (v2) — Importação OFX/CSV
 

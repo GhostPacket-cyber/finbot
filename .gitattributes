@@ -1,4 +1,14 @@
+# Texto com fim de linha normalizado no repositório.
 * text=auto
 gradlew text eol=lf
 *.bat text eol=crlf
 *.jar binary
+
+# Amostras de extrato: os bytes importam (Latin-1/Windows-1252, CRLF), não converter.
+app/src/test/resources/importing/** -text
+
+# Binários
+*.png binary
+*.jpg binary
+*.jks binary
+*.apk binary

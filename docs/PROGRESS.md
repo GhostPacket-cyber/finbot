@@ -180,7 +180,7 @@
 - **Teste ponta a ponta no aparelho** (2026-10-22): o usuário concedeu o acesso; resultado abaixo.
 
 ### Ponta a ponta no POCO X7 Pro (Android 16, HyperOS 3.0)
-O usuário ligou a chave, concedeu o acesso e marcou Nubank, Inter, Caixa e "Teste via ADB". As notificações foram postadas com `adb shell cmd notification post` (amostras sintéticas):
+O usuário ligou a chave, concedeu o acesso e marcou três bancos e "Teste via ADB". As notificações foram postadas com `adb shell cmd notification post` (amostras sintéticas):
 
 | Notificação | Resultado |
 |---|---|
@@ -238,7 +238,7 @@ O usuário ligou a chave, concedeu o acesso e marcou Nubank, Inter, Caixa e "Tes
 - **Android 15+:** notificações marcadas como sensíveis (códigos de verificação, detectados pelo sistema) chegam a listeners não confiáveis só como aviso de "conteúdo oculto". Ler o conteúdo exige a permissão `RECEIVE_SENSITIVE_NOTIFICATIONS`, que é `role|signature` e não está disponível para o FinBot. Isso não afeta compras e Pix. Para o FinBot é até desejável: códigos já são rejeitados pelo parser.
 - **Android 13+ ("configurações restritas"):** apps instalados fora de uma loja por sessão podem ter o acesso a notificações bloqueado até o usuário permitir em Informações do app. A tela do FinBot explica o caminho.
 - **HyperOS:** a economia de bateria pode encerrar o serviço; o app pede `requestRebind` ao abrir. No POCO, o serviço recebeu as notificações logo após o acesso ser concedido. Ainda não foi observado por horas com a tela desligada.
-- **Bancos instalados no aparelho de teste:** Nubank, Inter e Caixa (pacotes do catálogo confirmados). Os textos reais **não** foram usados nos testes (só amostras sintéticas). Bancos testados com notificação real: nenhum ainda (só o caminho do sistema, com amostras sintéticas via ADB).
+- **Bancos no aparelho de teste:** três pacotes do catálogo foram confirmados como reais. Os textos reais **não** foram usados nos testes (só amostras sintéticas). Bancos testados com notificação real: nenhum ainda (só o caminho do sistema, com amostras sintéticas via ADB).
 
 ### Limitações
 - **Os textos dos bancos mudam sem aviso.** Se o padrão deixar de casar, a notificação é ignorada (falha segura). O recurso "Testar um texto" ajuda a diagnosticar.
