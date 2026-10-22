@@ -4,11 +4,31 @@
 
 ## v2 · ETAPA 09 — Leitura opcional de notificações de banco
 
-**Status:** **implementada e testada de forma automatizada; falta o teste ponta a ponta no aparelho.**
+**Status:** **concluída.**
 - JVM: 128/128 testes passaram.
 - POCO X7 Pro: **102/102 testes instrumentados passaram**. Isso inclui a nova rodada de `ImportRepositoryTest`/`ImportScreenTest` que estava pendente da ETAPA 08.
 - Lint: 0 erros.
-- Falta o teste ponta a ponta no aparelho: conceder o acesso a notificações é um ajuste de segurança do Android e cabe ao usuário. Roteiro em `TEST_PLAN.md`.
+- **Teste ponta a ponta no aparelho** (2026-10-22): o usuário concedeu o acesso; resultado abaixo.
+
+### Ponta a ponta no POCO X7 Pro (Android 16, HyperOS 3.0)
+O usuário ligou a chave, concedeu o acesso e marcou Nubank, Inter, Caixa e "Teste via ADB". As notificações foram postadas com `adb shell cmd notification post` (amostras sintéticas):
+
+| Notificação | Resultado |
+|---|---|
+| Compra de R$ 45,90 aprovada em PADARIA TESTE E2E | **sugestão criada**, categoria Mercado; aviso "Nova sugestão: R$ 45,90 em PADARIA TESTE E2E — Revisar", privado na tela bloqueada |
+| A mesma, de novo no mesmo minuto | **ignorada** (dedup) |
+| "Seu codigo de verificacao e 123456" | ignorada |
+| Pix recebido de R$ 100,00 | **sugestão criada** ("Pix de Fulano Teste E2E", receita) |
+| Compra recusada | ignorada |
+| Compra com a chave **desligada** | **nada processado**: o componente ficou desativado no sistema |
+
+- A Revisão mostrou exatamente 2 itens e o saldo não mudou.
+- O logcat do processo do FinBot tem só "Notificação de banco virou sugestão para revisão", sem valor, nome ou texto. O texto aparece apenas na linha do `adbd` com o próprio comando de teste.
+- Limpeza: as 2 sugestões de teste foram descartadas pela tela.
+
+**Achados no aparelho e corrigidos:**
+- **Desligar a chave faz o Android retirar o acesso a notificações** (o componente desativado sai da lista do sistema). É bom para a privacidade, mas religar exige conceder de novo. A tela agora avisa isso.
+- A chave e o "inverter sinal" da importação (ETAPA 08) não tinham rótulo acessível (o UIAutomator os mostrava como `NAF`). Agora a linha inteira é um `toggleable` com `Role.Switch`, e tocar no texto também liga e desliga.
 
 ### Feito
 - **Desligado por padrão, em duas camadas:**
@@ -48,8 +68,8 @@
 ### Android 15+ e HyperOS (pesquisa de 2026-10-22)
 - **Android 15+:** notificações marcadas como sensíveis (códigos de verificação, detectados pelo sistema) chegam a listeners não confiáveis só como aviso de "conteúdo oculto". Ler o conteúdo exige a permissão `RECEIVE_SENSITIVE_NOTIFICATIONS`, que é `role|signature` e não está disponível para o FinBot. Isso não afeta compras e Pix. Para o FinBot é até desejável: códigos já são rejeitados pelo parser.
 - **Android 13+ ("configurações restritas"):** apps instalados fora de uma loja por sessão podem ter o acesso a notificações bloqueado até o usuário permitir em Informações do app. A tela do FinBot explica o caminho.
-- **HyperOS:** a economia de bateria pode encerrar o serviço; o app pede `requestRebind` ao abrir. Ainda falta confirmar no POCO, no teste manual.
-- **Bancos instalados no aparelho de teste:** Nubank, Inter e Caixa (pacotes do catálogo confirmados). Os textos reais **não** foram usados nos testes (só amostras sintéticas). Bancos testados com notificação real: nenhum ainda.
+- **HyperOS:** a economia de bateria pode encerrar o serviço; o app pede `requestRebind` ao abrir. No POCO, o serviço recebeu as notificações logo após o acesso ser concedido. Ainda não foi observado por horas com a tela desligada.
+- **Bancos instalados no aparelho de teste:** Nubank, Inter e Caixa (pacotes do catálogo confirmados). Os textos reais **não** foram usados nos testes (só amostras sintéticas). Bancos testados com notificação real: nenhum ainda (só o caminho do sistema, com amostras sintéticas via ADB).
 
 ### Limitações
 - **Os textos dos bancos mudam sem aviso.** Se o padrão deixar de casar, a notificação é ignorada (falha segura). O recurso "Testar um texto" ajuda a diagnosticar.

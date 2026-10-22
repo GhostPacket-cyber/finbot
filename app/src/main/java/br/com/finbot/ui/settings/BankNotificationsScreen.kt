@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -33,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -175,14 +177,18 @@ fun BankNotificationsScreen(onBack: () -> Unit, viewModel: BankNotificationsView
                 Text("• Só notificações dos apps marcados abaixo. As de outros apps são descartadas sem ler o conteúdo.", style = MaterialTheme.typography.bodySmall)
                 Text("• Do texto, guardamos só valor, estabelecimento e data. O texto da notificação não é salvo nem registrado.", style = MaterialTheme.typography.bodySmall)
                 Text("• Nada é enviado para fora do aparelho (nem para a IA).", style = MaterialTheme.typography.bodySmall)
-                Text("• Para revogar: desligue a chave abaixo ou retire o acesso em Configurações do Android › Acesso a notificações.", style = MaterialTheme.typography.bodySmall)
+                Text("• Para revogar: desligue a chave abaixo (o Android também retira o acesso; para religar, conceda de novo) ou retire o acesso em Configurações do Android › Acesso a notificações.", style = MaterialTheme.typography.bodySmall)
                 Text("• Códigos de verificação ficam ocultos para o FinBot no Android 15 ou superior.", style = MaterialTheme.typography.bodySmall)
             }
         }
 
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        // A linha inteira é o controle: o leitor de tela anuncia "Ler notificações de banco, chave, ativada/desativada".
+        Row(
+            Modifier.fillMaxWidth().toggleable(value = state.enabled, role = Role.Switch, onValueChange = viewModel::setEnabled),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text("Ler notificações de banco", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            Switch(checked = state.enabled, onCheckedChange = viewModel::setEnabled)
+            Switch(checked = state.enabled, onCheckedChange = null)
         }
 
         if (state.enabled) {

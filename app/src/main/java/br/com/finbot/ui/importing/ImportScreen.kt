@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -40,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -261,9 +263,13 @@ private fun MappingStep(viewModel: ImportViewModel, s: ImportStep.Mapping) {
                 ChoiceField("Coluna de crédito (receitas)", optionalColumns, m.creditColumn, { viewModel.updateMapping(m.copy(creditColumn = it)) })
             } else {
                 ChoiceField("Coluna do valor", columns, m.amountColumn, { viewModel.updateMapping(m.copy(amountColumn = it)) })
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp)
+                        .toggleable(value = m.invertSign, role = Role.Switch, onValueChange = { viewModel.updateMapping(m.copy(invertSign = it)) }),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text("Despesas aparecem positivas (inverter sinal)", modifier = Modifier.weight(1f))
-                    Switch(checked = m.invertSign, onCheckedChange = { viewModel.updateMapping(m.copy(invertSign = it)) })
+                    Switch(checked = m.invertSign, onCheckedChange = null)
                 }
             }
 
