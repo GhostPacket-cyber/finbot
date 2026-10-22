@@ -20,7 +20,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.8.0-v2-etapa07"
+        versionName = "0.9.0-v2-etapa08"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -47,6 +47,13 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+    }
+
+    // Os extratos sintéticos de teste (OFX/CSV) ficam num só lugar e também servem aos testes instrumentados.
+    sourceSets {
+        getByName("androidTest") {
+            assets.srcDir("src/test/resources")
+        }
     }
 }
 

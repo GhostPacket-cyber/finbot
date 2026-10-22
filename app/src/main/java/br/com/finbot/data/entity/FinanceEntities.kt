@@ -67,6 +67,7 @@ data class AccountEntity(
         Index(value = ["status", "occurred_at"]),
         Index(value = ["category_id"]),
         Index(value = ["account_id"]),
+        Index(value = ["import_batch_id"]),
     ],
 )
 data class TransactionEntity(
@@ -89,4 +90,6 @@ data class TransactionEntity(
     @ColumnInfo(name = "deleted_at") val deletedAt: Instant? = null,
     /** Observação livre do usuário. Adicionada no schema v2. */
     val note: String? = null,
+    /** Lote de importação de origem (OFX/CSV), para desfazer o lote inteiro. Adicionada no schema v4. */
+    @ColumnInfo(name = "import_batch_id") val importBatchId: Long? = null,
 )

@@ -54,10 +54,11 @@ import br.com.finbot.domain.Money
 import br.com.finbot.domain.PeriodPreset
 import br.com.finbot.domain.label
 import br.com.finbot.ui.categories.ManageScreen
+import br.com.finbot.ui.importing.ImportScreen
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-private enum class Sub { LIST, REVIEW, MANAGE }
+private enum class Sub { LIST, REVIEW, MANAGE, IMPORT }
 
 /** Aba Lançamentos com subtelas por estado: lista, revisão e categorias/contas. */
 @Composable
@@ -81,9 +82,15 @@ fun TransactionsTab(viewModel: TransactionsViewModel = viewModel(factory = Trans
 
     Box(Modifier.fillMaxSize()) {
         when (sub) {
-            Sub.LIST -> TransactionsListScreen(viewModel, onOpenReview = { sub = Sub.REVIEW }, onOpenManage = { sub = Sub.MANAGE })
+            Sub.LIST -> TransactionsListScreen(
+                viewModel,
+                onOpenReview = { sub = Sub.REVIEW },
+                onOpenManage = { sub = Sub.MANAGE },
+                onOpenImport = { sub = Sub.IMPORT },
+            )
             Sub.REVIEW -> ReviewScreen(viewModel, onBack = { sub = Sub.LIST })
             Sub.MANAGE -> ManageScreen(onBack = { sub = Sub.LIST })
+            Sub.IMPORT -> ImportScreen(onBack = { sub = Sub.LIST }, onOpenReview = { sub = Sub.REVIEW })
         }
         SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 72.dp))
     }
@@ -105,7 +112,12 @@ fun TransactionsTab(viewModel: TransactionsViewModel = viewModel(factory = Trans
 }
 
 @Composable
-private fun TransactionsListScreen(viewModel: TransactionsViewModel, onOpenReview: () -> Unit, onOpenManage: () -> Unit) {
+private fun TransactionsListScreen(
+    viewModel: TransactionsViewModel,
+    onOpenReview: () -> Unit,
+    onOpenManage: () -> Unit,
+    onOpenImport: () -> Unit,
+) {
     val rows by viewModel.rows.collectAsStateWithLifecycle()
     val totals by viewModel.totals.collectAsStateWithLifecycle()
     val hasMore by viewModel.hasMore.collectAsStateWithLifecycle()
@@ -122,7 +134,8 @@ private fun TransactionsListScreen(viewModel: TransactionsViewModel, onOpenRevie
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("Lançamentos", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f).semantics { heading() })
-                TextButton(onClick = onOpenManage) { Text("Categorias e contas") }
+                TextButton(onClick = onOpenImport) { Text("Importar") }
+                TextButton(onClick = onOpenManage) { Text("Categorias") }
             }
 
             if (pending.isNotEmpty()) {

@@ -2,6 +2,32 @@
 
 Contrato vigente: `Prompt/FINBOT_PROMPT_MESTRE_V2.md`.
 
+## ETAPA 08 (v2) — Importação OFX/CSV
+
+### JVM
+| Classe | Cobre |
+|---|---|
+| `StatementParsingTest` (15) | OFX SGML latin1/XML UTF-8, codificação, CSV `;`/`,`, `R$ -1.234,56`, débito/crédito, cabeçalho/rodapé, chaves de dedup |
+| `AiCategorizerTest` (5) | só descrições saem do aparelho; validação da resposta; sem consentimento/chave não chama; retry |
+
+### Instrumentados
+| Classe | Cobre |
+|---|---|
+| `ImportRepositoryTest` (9) | reimportar sem duplicar; acentos latin1; `R$ -1.234,56`; desfazer só o lote; gravação atômica; duplicata manual; categorias; data futura; modelos |
+| `PersistenceAndMigrationTest` (+1) | v3 → v4 e cadeia v1 → v4 |
+| `ImportScreenTest` (2) | navegação; desfazer lote pela tela |
+
+Os arquivos sintéticos ficam em `app/src/test/resources/importing/` e entram no APK de teste como assets.
+
+### Manuais sugeridos
+1. Exportar um extrato OFX real no app do banco → Lançamentos → **Importar** → conferir acentos, conta mascarada e valores → Importar → Revisão → Confirmar.
+2. Importar o mesmo arquivo de novo → "0 novo(s)".
+3. CSV do banco → conferir o mapeamento → **Salvar** como modelo → reabrir outro CSV do mesmo banco e aplicar o modelo.
+4. Registrar à mão um gasto com o mesmo valor de um item do extrato → importar → o item aparece como possível duplicata, desmarcado.
+5. **Sugerir categorias com IA** (com consentimento e chave) → conferir as sugestões "(IA)".
+6. **Desfazer lote** → os itens somem de Lançamentos e da Revisão.
+7. Arquivo maior que 5 MB → mensagem de limite.
+
 ## ETAPA 03 (v2) — Chat sem IA
 
 ### JVM

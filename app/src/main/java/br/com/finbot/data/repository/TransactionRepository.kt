@@ -34,6 +34,7 @@ class TransactionRepository(
         status: TransactionStatus = TransactionStatus.CONFIRMED,
         dedupKey: String? = null,
         externalReference: String? = null,
+        importBatchId: Long? = null,
     ): Long {
         val now = now()
         TransactionRules.requireValid(draft, now)
@@ -56,6 +57,7 @@ class TransactionRepository(
                 dedupKey = dedupKey,
                 externalReference = externalReference,
                 note = draft.note?.trim()?.ifEmpty { null },
+                importBatchId = importBatchId,
             )
             val id = dao.insert(entity)
             audit.record(
@@ -75,8 +77,10 @@ class TransactionRepository(
         source: TransactionSource,
         dedupKey: String,
         status: TransactionStatus = TransactionStatus.PENDING_REVIEW,
+        externalReference: String? = null,
+        importBatchId: Long? = null,
     ): Long? = db.withTransaction {
-        if (dao.findByDedupKey(dedupKey) != null) null else create(draft, source, status, dedupKey)
+        if (dao.findByDedupKey(dedupKey) != null) null else create(draft, source, status, dedupKey, externalReference, importBatchId)
     }
 
     suspend fun update(id: Long, draft: TransactionDraft) {

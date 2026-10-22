@@ -272,4 +272,36 @@ interface TransactionDao {
 
     @Query("SELECT COUNT(*) FROM transactions WHERE account_id = :accountId AND deleted_at IS NULL")
     suspend fun countByAccount(accountId: Long): Int
+
+    /** Quais destas chaves já existem (em qualquer estado, inclusive excluídos e descartados). Máx. 900 por chamada. */
+    @Query("SELECT dedup_key FROM transactions WHERE dedup_key IN (:keys)")
+    suspend fun existingDedupKeys(keys: List<String>): List<String>
+
+    /** Lançamentos sem chave (manuais/chat) com mesmo tipo e valor num intervalo: possível duplicata de importação. */
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE deleted_at IS NULL AND status != 'DISCARDED' AND dedup_key IS NULL AND import_batch_id IS NULL
+          AND kind = :kind AND amount_cents = :amountCents AND occurred_at >= :start AND occurred_at < :end
+        ORDER BY occurred_at LIMIT 1
+        """,
+    )
+    suspend fun findManualMatch(kind: TransactionKind, amountCents: Long, start: Instant, end: Instant): TransactionEntity?
+
+    /** Histórico de categorização do usuário (mais recentes primeiro), para sugerir categoria a itens importados. */
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE deleted_at IS NULL AND status = 'CONFIRMED' AND category_id IS NOT NULL
+        ORDER BY updated_at DESC LIMIT :limit
+        """,
+    )
+    suspend fun listCategorizedHistory(limit: Int): List<TransactionEntity>
+
+    @Query("SELECT * FROM transactions WHERE import_batch_id = :batchId ORDER BY id")
+    suspend fun listByBatch(batchId: Long): List<TransactionEntity>
+
+    /** Ao desfazer um lote, libera as chaves para que o mesmo arquivo possa ser importado de novo. */
+    @Query("UPDATE transactions SET dedup_key = NULL, updated_at = :now WHERE import_batch_id = :batchId")
+    suspend fun releaseBatchDedupKeys(batchId: Long, now: Instant): Int
 }

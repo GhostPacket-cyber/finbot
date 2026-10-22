@@ -15,6 +15,7 @@ import br.com.finbot.data.entity.BillEntity
 import br.com.finbot.data.entity.BillOccurrenceEntity
 import br.com.finbot.data.entity.BudgetEntity
 import br.com.finbot.data.entity.ChatMessageEntity
+import br.com.finbot.data.entity.CsvPresetEntity
 import br.com.finbot.data.entity.ImportBatchEntity
 import br.com.finbot.data.entity.NotificationLogEntity
 import br.com.finbot.data.entity.PendingActionEntity
@@ -241,8 +242,51 @@ interface ImportBatchDao {
     @Insert
     suspend fun insert(batch: ImportBatchEntity): Long
 
+    @Update
+    suspend fun update(batch: ImportBatchEntity)
+
     @Query("SELECT * FROM import_batches WHERE id = :id")
     suspend fun getById(id: Long): ImportBatchEntity?
+
+    @Query(
+        """
+        SELECT b.*,
+            (SELECT COUNT(*) FROM transactions t WHERE t.import_batch_id = b.id AND t.deleted_at IS NULL AND t.status = 'PENDING_REVIEW') AS pending_count,
+            (SELECT COUNT(*) FROM transactions t WHERE t.import_batch_id = b.id AND t.deleted_at IS NULL AND t.status = 'CONFIRMED') AS confirmed_count,
+            a.name AS account_name
+        FROM import_batches b LEFT JOIN accounts a ON a.id = b.account_id
+        ORDER BY b.imported_at DESC, b.id DESC
+        """,
+    )
+    fun observeAll(): Flow<List<ImportBatchRow>>
+}
+
+data class ImportBatchRow(
+    @Embedded val batch: ImportBatchEntity,
+    @ColumnInfo(name = "pending_count") val pendingCount: Int,
+    @ColumnInfo(name = "confirmed_count") val confirmedCount: Int,
+    @ColumnInfo(name = "account_name") val accountName: String?,
+)
+
+@Dao
+interface CsvPresetDao {
+    @Insert
+    suspend fun insert(preset: CsvPresetEntity): Long
+
+    @Update
+    suspend fun update(preset: CsvPresetEntity)
+
+    @Query("SELECT * FROM csv_presets WHERE name = :name COLLATE NOCASE LIMIT 1")
+    suspend fun findByName(name: String): CsvPresetEntity?
+
+    @Query("DELETE FROM csv_presets WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("SELECT * FROM csv_presets ORDER BY name COLLATE NOCASE")
+    fun observeAll(): Flow<List<CsvPresetEntity>>
+
+    @Query("SELECT * FROM csv_presets ORDER BY name COLLATE NOCASE")
+    suspend fun listAll(): List<CsvPresetEntity>
 }
 
 @Dao

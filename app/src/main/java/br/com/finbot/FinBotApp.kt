@@ -9,6 +9,7 @@ import br.com.finbot.data.FinBotDatabase
 import br.com.finbot.data.repository.AccountRepository
 import br.com.finbot.data.repository.BillRepository
 import br.com.finbot.data.repository.CategoryRepository
+import br.com.finbot.data.repository.ImportRepository
 import br.com.finbot.data.repository.PendingActionRepository
 import br.com.finbot.data.repository.ReminderRepository
 import br.com.finbot.data.repository.ReportRepository
@@ -20,6 +21,7 @@ import br.com.finbot.data.repository.TransactionRepository
 import br.com.finbot.diagnostics.DeviceDiagnostics
 import br.com.finbot.security.KeystoreSecretCipher
 import br.com.finbot.gemini.AiAvailability
+import br.com.finbot.gemini.AiCategorizer
 import br.com.finbot.gemini.AiInterpreter
 import br.com.finbot.gemini.GeminiApi
 import br.com.finbot.gemini.HttpGeminiClient
@@ -50,21 +52,19 @@ class AppContainer(context: Context) {
     val categoryRepository by lazy { CategoryRepository(database, clock) }
     val accountRepository by lazy { AccountRepository(database) }
     val transactionRepository by lazy { TransactionRepository(database, clock, accountRepository) }
+    val importRepository by lazy { ImportRepository(database, clock, transactionRepository, accountRepository) }
     val summaryRepository by lazy { SummaryRepository(database) }
     val billRepository by lazy { BillRepository(database, clock, transactionRepository) }
     val reportRepository by lazy { ReportRepository(database) }
     val pendingActionRepository by lazy { PendingActionRepository(database, clock) }
     val geminiApi: GeminiApi = HttpGeminiClient()
-    val aiInterpreter by lazy {
-        AiInterpreter(geminiApi, availability = {
-            val cfg = configRepository.config.first()
-            if (!cfg.aiConsentGranted) {
-                AiAvailability.NoConsent
-            } else {
-                secretStore.get(SecretKind.GEMINI_API_KEY)?.let { AiAvailability.Ready(it, cfg.geminiModel) } ?: AiAvailability.NoKey
-            }
-        })
+    private suspend fun aiAvailability(): AiAvailability {
+        val cfg = configRepository.config.first()
+        if (!cfg.aiConsentGranted) return AiAvailability.NoConsent
+        return secretStore.get(SecretKind.GEMINI_API_KEY)?.let { AiAvailability.Ready(it, cfg.geminiModel) } ?: AiAvailability.NoKey
     }
+    val aiInterpreter by lazy { AiInterpreter(geminiApi, availability = { aiAvailability() }) }
+    val aiCategorizer by lazy { AiCategorizer(geminiApi, availability = { aiAvailability() }) }
     val reminderRepository by lazy { ReminderRepository(database, clock) }
     val notifier by lazy { AndroidNotifier(context) }
     val reminderProcessor by lazy {

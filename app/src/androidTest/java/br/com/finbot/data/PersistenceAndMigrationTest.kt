@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -110,7 +111,40 @@ class PersistenceAndMigrationTest {
     @Test
     fun cadeiaCompletaDeV1ParaAtual() = runTest {
         helper.createDatabase(FILE_MIGRATE, 1).close()
-        helper.runMigrationsAndValidate(FILE_MIGRATE, 3, true, *FinBotDatabase.MIGRATIONS).close()
+        helper.runMigrationsAndValidate(FILE_MIGRATE, 4, true, *FinBotDatabase.MIGRATIONS).close()
+    }
+
+    @Test
+    fun migracaoDeV3ParaV4PreservaLancamentosELotes() = runTest {
+        helper.createDatabase(FILE_MIGRATE, 3).apply {
+            insert("accounts", SQLiteDatabase.CONFLICT_ABORT, ContentValues().apply {
+                put("id", 1); put("uuid", "a1"); put("name", "Conta"); put("type", "CHECKING"); put("archived", 0)
+            })
+            insert("transactions", SQLiteDatabase.CONFLICT_ABORT, ContentValues().apply {
+                put("id", 1); put("uuid", "t1"); put("kind", "EXPENSE"); put("amount_cents", 990); put("currency", "BRL")
+                put("description", "café"); put("account_id", 1); put("occurred_at", clock.current.toEpochMilli())
+                put("created_at", clock.current.toEpochMilli()); put("updated_at", clock.current.toEpochMilli())
+                put("source", "IMPORT_OFX"); put("status", "PENDING_REVIEW"); put("dedup_key", "ofx:abc")
+            })
+            insert("import_batches", SQLiteDatabase.CONFLICT_ABORT, ContentValues().apply {
+                put("id", 1); put("uuid", "b1"); put("source", "OFX"); put("file_name_hash", "h")
+                put("imported_at", clock.current.toEpochMilli()); put("item_count", 1)
+            })
+            close()
+        }
+
+        helper.runMigrationsAndValidate(FILE_MIGRATE, 4, true, MIGRATION_3_4).close()
+
+        val migrated = open(FILE_MIGRATE)
+        val t = migrated.transactionDao().getById(1)!!
+        assertEquals("café", t.description)
+        assertNull(t.importBatchId)
+        assertEquals(listOf("ofx:abc"), migrated.transactionDao().existingDedupKeys(listOf("ofx:abc", "x")))
+        val batch = migrated.importBatchDao().getById(1)!!
+        assertEquals(0, batch.skippedCount)
+        assertNull(batch.undoneAt)
+        assertTrue(migrated.csvPresetDao().listAll().isEmpty())
+        migrated.close()
     }
 
     private companion object {

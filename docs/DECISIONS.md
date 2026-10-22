@@ -133,3 +133,14 @@ As libs AndroidX traziam `kotlinx-coroutines-core` 1.9.0, enquanto o `kotlinx-co
 ## ADR-006 — Proteção da tela administrativa
 
 `FLAG_SECURE` na `MainActivity` impede screenshots, gravação de tela e a miniatura em "Recentes" da tela que recebe credenciais. Os campos de segredo usam máscara de senha, teclado sem autocorreção, e são limpos após salvar.
+
+## ADR-017 — Importação de extratos (v2 · ETAPA 08)
+
+- **Parsers próprios e tolerantes**, sem biblioteca. O OFX 1.x real costuma ser SGML malformado (tags sem fechamento, `CHARSET:NONE` com acentos em Latin-1). A codificação segue esta ordem: BOM → declarada → UTF-8 estrito → Windows-1252 (superconjunto prático do ISO-8859-1).
+- **Chaves de dedup em hash** (SHA-256) no índice único já existente em `dedup_key`. O número da conta não fica no banco em claro, só mascarado em `import_batches.masked_account`. No CSV, a "ocorrência no dia" diferencia dois lançamentos idênticos e continua estável ao reimportar.
+- **Itens excluídos ou descartados continuam bloqueando a chave.** Descartar é uma decisão do usuário e não deve voltar. **Desfazer lote** é a exceção: libera as chaves de propósito.
+- **Lote atômico:** o lote e os itens são gravados numa única transação. Se nada for novo, o lote não é criado.
+- **Data ao meio-dia local** para a data do extrato (sem horário confiável). Isso evita trocar de dia por fuso. No dia de hoje, a data nunca passa de "agora".
+- **Possível duplicata de lançamento manual** (sem chave, mesmo tipo e valor, ±2 dias) vem desmarcada. Comparar descrições de banco e de usuário gera falsos negativos demais.
+- **Categoria:** o histórico do usuário vence as palavras-chave. A IA é só por botão e envia apenas tipo e descrição; a resposta passa por schema fechado e validação local.
+- **Schema v4** só com `ALTER TABLE ADD COLUMN` e uma tabela nova. `import_batch_id` não tem FK, para não recriar a tabela `transactions`; a integridade fica no repositório.

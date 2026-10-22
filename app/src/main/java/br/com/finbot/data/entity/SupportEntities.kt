@@ -53,6 +53,32 @@ data class ImportBatchEntity(
     @ColumnInfo(name = "file_name_hash") val fileNameHash: String,
     @ColumnInfo(name = "imported_at") val importedAt: Instant,
     @ColumnInfo(name = "item_count") val itemCount: Int,
+    /** Conta do app que recebeu os lançamentos (v4). */
+    @ColumnInfo(name = "account_id") val accountId: Long? = null,
+    /** Conta do extrato já mascarada ("••••1234"); o número completo nunca é gravado (v4). */
+    @ColumnInfo(name = "masked_account") val maskedAccount: String? = null,
+    /** Itens do arquivo ignorados por já existirem (v4). */
+    @ColumnInfo(name = "skipped_count", defaultValue = "0") val skippedCount: Int = 0,
+    /** Quando o lote foi desfeito (v4). */
+    @ColumnInfo(name = "undone_at") val undoneAt: Instant? = null,
+)
+
+/** Mapeamento de CSV salvo por banco (v4). Índices de coluna começam em 0. */
+@Entity(tableName = "csv_presets", indices = [Index(value = ["name"], unique = true)])
+data class CsvPresetEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val separator: String,
+    @ColumnInfo(name = "skip_lines") val skipLines: Int,
+    @ColumnInfo(name = "skip_footer_lines") val skipFooterLines: Int,
+    @ColumnInfo(name = "date_column") val dateColumn: Int,
+    @ColumnInfo(name = "description_column") val descriptionColumn: Int,
+    @ColumnInfo(name = "amount_column") val amountColumn: Int?,
+    @ColumnInfo(name = "debit_column") val debitColumn: Int?,
+    @ColumnInfo(name = "credit_column") val creditColumn: Int?,
+    @ColumnInfo(name = "date_format") val dateFormat: String,
+    @ColumnInfo(name = "invert_sign") val invertSign: Boolean,
+    @ColumnInfo(name = "updated_at") val updatedAt: Instant,
 )
 
 /** Trilha de alterações. [summaryJson] traz só campos alterados, nunca conteúdo bruto de chat ou áudio. */

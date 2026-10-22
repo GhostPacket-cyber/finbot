@@ -1,0 +1,9 @@
+Extrato de conta corrente - BANCO FICTÍCIO
+Agência 0001 Conta 99999-9
+Data;Lançamento;Valor (R$);Saldo (R$)
+01/10/2026;SALDO ANTERIOR;;1.000,00
+03/10/2026;Aluguel outubro;R$ -1.234,56;-234,56
+04/10/2026;Pix recebido João;R$ 500,00;265,44
+05/10/2026;Mercado São Jorge;-87,30;178,14
+Saldo final;;;178,14
+Gerado em 15/10/2026

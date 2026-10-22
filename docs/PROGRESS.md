@@ -2,6 +2,96 @@
 
 > **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007.
 
+## v2 · ETAPA 08 — Importação de extratos OFX/CSV
+
+**Status:** **concluída, com uma pendência pequena no aparelho.**
+- JVM: 122/122 testes passaram.
+- POCO X7 Pro: **95/95 testes instrumentados passaram**, mais um teste manual por ADB com o seletor de arquivos real.
+- Lint: 0 erros.
+- Pendência: rodar de novo `ImportRepositoryTest` e `ImportScreenTest` no aparelho depois da correção de API 26 apontada pelo lint (ver "Problemas"). O celular foi desconectado antes dessa rodada.
+
+### Feito
+- **Leitura do arquivo**
+  - Usa o seletor do sistema (SAF `OpenDocument`), sem permissão de armazenamento.
+  - O limite de **5 MB** é checado de duas formas: pelo tamanho declarado e pela leitura em blocos, que para ao passar do limite.
+  - O formato é detectado pelo conteúdo, não pela extensão.
+- **Codificação** (`TextDecoding`), nesta ordem:
+  1. BOM UTF-8;
+  2. `CHARSET`/`ENCODING` declarado no cabeçalho OFX ou no XML;
+  3. UTF-8 estrito;
+  4. Windows-1252, que cobre o ISO-8859-1.
+- **OFX** (`OfxParser`)
+  - 1.x SGML (tags sem fechamento) e 2.x XML.
+  - Lê TRNTYPE, DTPOSTED, TRNAMT, FITID, NAME e MEMO, além de BANKID e ACCTID.
+  - Linhas inválidas viram erro por linha e o resto do arquivo continua.
+  - A conta aparece sempre mascarada (`••••1234`).
+- **CSV** (`CsvReader`/`CsvImporter`)
+  - Detecta o separador (`;`, `,` ou tabulação) e respeita aspas.
+  - Sugere o mapeamento pelo cabeçalho.
+  - Aceita valor único ou colunas de débito e crédito.
+  - Datas dd/mm/aaaa, dd/mm/aa e aaaa-mm-dd.
+  - Pula linhas de cabeçalho e de rodapé; ignora linhas informativas (saldo).
+  - Opção de inverter o sinal.
+  - Valores como `R$ -1.234,56`, `(1.234,56)` e `1.234,56 D/C`.
+- **Modelos de CSV por banco:** tabela `csv_presets`. Salvar com o mesmo nome substitui o modelo.
+- **Deduplicação**
+  - OFX: `sha256(ACCTID|FITID)`.
+  - CSV: `sha256(data|valor com sinal|descrição normalizada|ocorrência no dia)`.
+  - O índice único em `dedup_key` impede duplicatas mesmo em corrida.
+  - Itens excluídos ou descartados também não voltam.
+- **Possíveis duplicatas de lançamentos manuais** (mesmo tipo e valor, ±2 dias) aparecem com aviso e **desmarcadas**. O usuário decide.
+- **Categorias**, nesta ordem de prioridade:
+  1. o histórico do próprio usuário (mesma descrição normalizada);
+  2. palavras-chave;
+  3. a **IA, opcional**: botão "Sugerir categorias com IA". Envia **só o tipo e a descrição**, exige consentimento e chave, e a resposta é validada contra as categorias existentes (`AiCategorizer`).
+- **Gravação:** tudo entra como **PENDING_REVIEW** num lote de `import_batches`, numa única transação (tudo ou nada). Depois o app abre a caixa de **Revisão**.
+- **Desfazer lote:** exclusão lógica dos itens ainda ativos do lote (confirmados ou em revisão), com auditoria. As chaves são liberadas para permitir reimportar o arquivo. Nada de outros lotes ou manual é afetado.
+- **Schema v4** (`MIGRATION_3_4`):
+  - `transactions.import_batch_id` com índice;
+  - `import_batches.account_id`, `masked_account`, `skipped_count` e `undone_at`;
+  - a tabela `csv_presets`.
+- **Interface:** botão **Importar** em Lançamentos → escolher arquivo → mapear colunas (CSV) → pré-visualizar (contagens, erros por linha, categoria editável por item) → Revisão. O histórico de importações tem "Desfazer lote".
+- **Arquivos sintéticos** em `app/src/test/resources/importing/` (também servem aos testes instrumentados como assets):
+  - OFX SGML em ISO-8859-1 com acentos;
+  - OFX XML em UTF-8;
+  - CSV estilo Nubank;
+  - CSV estilo Itaú em Windows-1252, com cabeçalho e rodapé;
+  - CSV com débito e crédito.
+- `versionName` = `0.9.0-v2-etapa08`.
+
+### Testes
+| Suite | Cobre |
+|---|---|
+| `StatementParsingTest` (JVM, 15) | OFX latin1 com acentos (declarado e sem charset), OFX XML com entidades, dedup estável, erros por linha, valores OFX; decodificação BOM/UTF-8/1252; CSV `;` com `R$ -1.234,56`, cabeçalho e rodapé; CSV `,` com data ISO e aspas; ocorrências no mesmo dia; débito/crédito; mapeamento manual, rodapé e inversão; formatos de valor; leitor com aspas escapadas |
+| `AiCategorizerTest` (JVM, 5) | envia só id/tipo/descrição; rejeita categoria de outro tipo e id desconhecido; sem consentimento ou chave não chama a API; JSON fora do formato; uma nova tentativa em falha transitória e nenhuma em 429 |
+| `ImportRepositoryTest` (9) | OFX latin1 entra em revisão sem afetar o saldo; **reimportar não duplica** (inclusive depois de confirmar ou descartar, em OFX e CSV); `R$ -1.234,56`; **desfazer remove só aquele lote** e permite reimportar; **gravação atômica**; duplicata manual desmarcada; categoria por histórico e por palavra-chave; data futura; modelos de CSV |
+| `PersistenceAndMigrationTest` (+1) | v3 → v4 preserva lançamentos e lotes; cadeia v1 → v4 |
+| `ImportScreenTest` (UI, 2) | abrir e voltar; lote no histórico → "Desfazer lote" → confirmação → "Desfeito em" |
+
+**Teste manual por ADB** (2026-10-21), com um OFX sintético copiado para Downloads:
+1. O seletor real abriu o arquivo e a pré-visualização mostrou os acentos corretos, a conta `••••66-5` e as categorias sugeridas.
+2. "Importar 3 para revisão" abriu a Revisão.
+3. Reimportar o mesmo arquivo mostrou "0 novo(s) · 3 já importado(s)".
+4. "Desfazer lote" funcionou.
+5. O arquivo foi apagado do aparelho depois.
+6. O logcat do app tem só o tamanho do arquivo e as contagens: nenhum nome de arquivo, conta ou descrição.
+
+### Problemas encontrados e corrigidos
+- O lint apontou `LocalDate.ofInstant`, que só existe a partir da API 34 e travaria em Android 8 a 13. Trocado por `now.atZone(zone).toLocalDate()`.
+- No mapeamento sugerido, a linha "SALDO ANTERIOR" (sem valor) virava erro. Linhas sem valor agora são ignoradas em silêncio.
+
+### Critérios de aceite
+- [x] Reimportar não duplica.
+- [x] OFX SGML em ISO-8859-1 com acentos lido corretamente (JVM, instrumentado e no aparelho pelo seletor real).
+- [x] CSV com `R$ -1.234,56`.
+- [x] Desfazer lote remove só aquele lote.
+
+### Limitações
+- O registro do lote desfeito pelo teste manual ficou no histórico do aparelho ("Desfeito em 21/10/26 18:44"). É o registro de auditoria esperado.
+- No OFX, a data usada é DTPOSTED (gravada ao meio-dia local). Horários e fuso do banco são ignorados.
+- A detecção de duplicata manual compara só tipo, valor e data; a descrição não entra.
+- O app mostra no máximo 30 linhas com erro por arquivo.
+
 ## v2 · ETAPA 07 — Relatórios, gráficos e exportação CSV
 
 **Status:** **concluída.** 102/102 testes JVM, **83/83 instrumentados no POCO X7 Pro (duas rodadas seguidas)** e lint com 0 erros.

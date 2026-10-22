@@ -11,6 +11,7 @@ import br.com.finbot.data.dao.BillDao
 import br.com.finbot.data.dao.BudgetDao
 import br.com.finbot.data.dao.CategoryDao
 import br.com.finbot.data.dao.ChatMessageDao
+import br.com.finbot.data.dao.CsvPresetDao
 import br.com.finbot.data.dao.ImportBatchDao
 import br.com.finbot.data.dao.NotificationLogDao
 import br.com.finbot.data.dao.PendingActionDao
@@ -23,6 +24,7 @@ import br.com.finbot.data.entity.BillOccurrenceEntity
 import br.com.finbot.data.entity.BudgetEntity
 import br.com.finbot.data.entity.CategoryEntity
 import br.com.finbot.data.entity.ChatMessageEntity
+import br.com.finbot.data.entity.CsvPresetEntity
 import br.com.finbot.data.entity.ImportBatchEntity
 import br.com.finbot.data.entity.NotificationLogEntity
 import br.com.finbot.data.entity.PendingActionEntity
@@ -30,7 +32,7 @@ import br.com.finbot.data.entity.ReminderEntity
 import br.com.finbot.data.entity.TransactionEntity
 
 @Database(
-    version = 3,
+    version = 4,
     exportSchema = true,
     entities = [
         CategoryEntity::class,
@@ -43,6 +45,7 @@ import br.com.finbot.data.entity.TransactionEntity
         PendingActionEntity::class,
         BudgetEntity::class,
         ImportBatchEntity::class,
+        CsvPresetEntity::class,
         AuditLogEntity::class,
         ChatMessageEntity::class,
     ],
@@ -58,6 +61,7 @@ abstract class FinBotDatabase : RoomDatabase() {
     abstract fun pendingActionDao(): PendingActionDao
     abstract fun budgetDao(): BudgetDao
     abstract fun importBatchDao(): ImportBatchDao
+    abstract fun csvPresetDao(): CsvPresetDao
     abstract fun auditLogDao(): AuditLogDao
     abstract fun chatMessageDao(): ChatMessageDao
 
@@ -65,7 +69,7 @@ abstract class FinBotDatabase : RoomDatabase() {
         const val FILE_NAME = "finbot.db"
 
         /** Migrações explícitas; nunca usar fallbackToDestructiveMigration (apagaria dados financeiros). */
-        val MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+        val MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 
         fun build(context: Context): FinBotDatabase =
             Room.databaseBuilder(context, FinBotDatabase::class.java, FILE_NAME)

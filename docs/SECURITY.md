@@ -22,6 +22,13 @@ Documento vivo; o modelo de ameaças completo entra na ETAPA 11 (v2).
 - O banco **não é criptografado** em repouso; depende da proteção do sandbox do Android e da criptografia do aparelho. Avaliar na ETAPA 11 (backup exportado será criptografado).
 - `audit_log` não guarda descrições antigas nem conteúdo de chat ou áudio, só os campos alterados.
 
+## Importação de extratos
+- O arquivo vem do seletor do sistema (SAF), com acesso só ao arquivo escolhido e limite de 5 MB lido em blocos. O texto fica apenas em memória.
+- O número da conta é exibido e guardado só mascarado (`••••1234`); as chaves de dedup são hashes SHA-256. O nome do arquivo vira hash, nunca é gravado nem registrado em log.
+- Logs da importação: só o tamanho em bytes e as contagens.
+- Descrições vindas de extratos são tratadas como dados: nunca viram SQL (parâmetros do Room), e a exportação CSV neutraliza fórmulas (ADR-016).
+- O botão "Sugerir categorias com IA" envia à Gemini API **só o tipo (despesa/receita) e a descrição** dos itens sem categoria, além dos nomes das categorias. Valores, datas, conta e nome do arquivo nunca saem do aparelho.
+
 ## Backup e exportação
 - O backup automático do Android (nuvem e transferência entre aparelhos) está desativado.
 - Desinstalar o app ou limpar seus dados apaga tudo. A exportação e importação criptografadas entram na ETAPA 11.
