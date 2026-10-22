@@ -2,7 +2,7 @@
 
 App Android de finanças pessoais com assistente por chat (texto e voz). Cada pessoa usa no próprio celular: os dados ficam só no aparelho, num SQLite local, sem conta online, servidor ou nuvem.
 
-**Versão 1.0.0** (`versionCode` 100). Contrato do projeto: `../Prompt/FINBOT_PROMPT_MESTRE_V2.md`. Manual do usuário: [docs/MANUAL.md](docs/MANUAL.md). Entrega: [docs/ENTREGA.md](docs/ENTREGA.md).
+**Versão 1.0.1** (`versionCode` 101). Contrato do projeto: `../Prompt/FINBOT_PROMPT_MESTRE_V2.md`. Manual do usuário: [docs/MANUAL.md](docs/MANUAL.md). Entrega: [docs/ENTREGA.md](docs/ENTREGA.md).
 
 ## O que faz
 - **Chat:** "gastei 45,90 no mercado", "recebi 2.500 de salário", `/saldo`, `/mes`. Nada é gravado sem você tocar em **Confirmar**.
@@ -30,7 +30,7 @@ App Android de finanças pessoais com assistente por chat (texto e voz). Cada pe
 ## Instalar o APK no celular
 
 ### Opção 1 — APK pronto
-1. Copie `FinBot-1.0.0.apk` para o celular (cabo, Drive etc.) e toque nele.
+1. Copie `FinBot-1.0.1.apk` para o celular (cabo, Drive etc.) e toque nele.
 2. Permita **instalar apps desconhecidos** para o app que abriu o arquivo (Arquivos, Chrome…).
 3. No Xiaomi/POCO/Redmi, a **verificação de segurança** pode analisar o APK antes de instalar. Aceite ou, se bloquear, desative-a temporariamente em *Segurança → ⚙ → Verificação de segurança*.
 
@@ -41,7 +41,7 @@ App Android de finanças pessoais com assistente por chat (texto e voz). Cada pe
 2. **Xiaomi/HyperOS:** ative também **Instalar via USB** (exige conta Mi e, às vezes, dados móveis) e **Depuração USB (Configurações de segurança)**. Se falhar com `INSTALL_FAILED_USER_RESTRICTED`, desative a verificação de apps antes de instalar em *Segurança → ⚙ → Verificação de segurança*.
 3. Instale:
    ```bash
-   adb install FinBot-1.0.0.apk
+   adb install FinBot-1.0.1.apk
    ```
 
 ## Compilar

@@ -58,8 +58,8 @@ fun OnboardingScreen(errors: ConfigErrors, onComplete: (displayName: String, tim
                 "• Seus dados financeiros ficam somente neste celular. Não há conta online nem nuvem.\n" +
                     "• A interpretação por IA (Gemini) é opcional e só funciona se você autorizar em Ajustes. " +
                     "Nesse caso, as mensagens enviadas ao assistente são processadas pelo Google.\n" +
-                    "• Desinstalar o app ou limpar seus dados apaga tudo. Uma exportação criptografada " +
-                    "para guardar cópias estará disponível em uma próxima versão.",
+                    "• Desinstalar o app ou limpar seus dados apaga tudo. Faça backups criptografados em " +
+                    "Ajustes › Backup e segurança.",
                 style = MaterialTheme.typography.bodyMedium,
             )
             ProfileFields(

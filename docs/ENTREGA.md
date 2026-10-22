@@ -1,11 +1,11 @@
-# Entrega — FinBot 1.0.0
+# Entrega — FinBot 1.0.1
 
 ## Checklist
 | Item | Situação | Evidência |
 |---|---|---|
 | APK debug | ✅ | `./gradlew assembleDebug` |
 | APK release assinado (chave fora do Git) | ✅ | `./gradlew assembleRelease`; `apksigner verify`: v2 ok, `CN=FinBot` |
-| Instalação limpa no aparelho alvo | ⏳ | Seção "Validação final" abaixo |
+| Instalação limpa no aparelho alvo | ✅ | 2026-10-22: 1.0.0 após desinstalar a depuração (primeiro uso correto, listener desativado, sem falhas, abertura a frio 299 ms); atualização para 1.0.1 por cima sem perder dados |
 | README (requisitos, instalação, HyperOS, Gemini, permissões) | ✅ | `README.md` |
 | Manual do usuário | ✅ | `docs/MANUAL.md` |
 | Tela Sobre (versão, licenças, privacidade) | ✅ | Ajustes › Sobre › Privacidade, avisos e licenças |
@@ -17,7 +17,7 @@
 ## Validação final no aparelho (aceite da ETAPA 13)
 | Cenário | Situação |
 |---|---|
-| Instalação limpa do release | ⏳ |
+| Instalação limpa do release | ✅ 1.0.0 limpa → 1.0.1 por cima |
 | Uso completo sem IA (chat, lançamentos, contas, relatórios) | ⏳ (já validado em debug nas etapas 03–07) |
 | Com IA: registro por texto e por áudio | ⏳ (validado em debug na ETAPA 04 com a chave do usuário) |
 | Importação de extrato | ⏳ (validado em debug na ETAPA 08 com OFX sintético) |

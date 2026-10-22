@@ -77,7 +77,7 @@ object ChatTexts {
     const val AUDIO_NEEDS_AI =
         "Mensagens de voz precisam da IA (Gemini), que está desativada ou sem chave. Ative em Ajustes, ou digite: gastei 45,90 no mercado."
     const val NOT_SUPPORTED_YET =
-        "Cadastro de contas a pagar e lembretes pelo chat chega em breve. Por enquanto registro gastos e receitas."
+        "Para cadastrar contas a pagar e lembretes, use a aba Contas. Pelo chat eu registro gastos e receitas."
 
     fun audioLabel(seconds: Int) = "🎤 Mensagem de voz ($seconds s)"
 
@@ -156,14 +156,14 @@ object ChatTexts {
 
     fun bills(items: List<BillDueRow>): String =
         if (items.isEmpty()) {
-            "Nenhuma conta pendente. O cadastro de contas a pagar chega em breve."
+            "Nenhuma conta pendente. Cadastre na aba Contas › + Conta."
         } else {
             "Contas pendentes:\n" + items.joinToString("\n") { "• ${it.title}: ${Money.format(it.amountCents)} — vence ${date(it.dueDate)}" }
         }
 
     fun reminders(items: List<ReminderEntity>, zone: ZoneId): String =
         if (items.isEmpty()) {
-            "Nenhum lembrete ativo. O cadastro de lembretes chega em breve."
+            "Nenhum lembrete ativo. Cadastre na aba Contas."
         } else {
             "Lembretes ativos:\n" + items.joinToString("\n") { "• ${it.title} — ${date(it.scheduledAt.atZone(zone).toLocalDate())}" }
         }

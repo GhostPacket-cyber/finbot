@@ -26,8 +26,8 @@ android {
         applicationId = "br.com.finbot"
         minSdk = 26
         targetSdk = 36
-        versionCode = 100
-        versionName = "1.0.0"
+        versionCode = 101
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "br.com.finbot.FinBotTestRunner"
     }

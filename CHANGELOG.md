@@ -2,6 +2,9 @@
 
 Versões internas por etapa do prompt mestre v2. Datas no formato aaaa-mm-dd.
 
+## 1.0.1 — 2026-10-22
+- Textos desatualizados corrigidos, achados na instalação limpa do release: o primeiro uso dizia que o backup criptografado "estará disponível em uma próxima versão", e o chat dizia que contas e lembretes "chegam em breve" (já existem na aba Contas).
+
 ## 1.0.0 — 2026-10-22 (ETAPA 13)
 - Primeira versão de entrega: **APK release assinado**, com a chave fora do repositório (`keystore.properties`, ignorado pelo Git).
 - Tela **Sobre**: versão, política de privacidade local, avisos (sem Open Finance, cota da Gemini, dados enviados à IA, bateria) e licenças de código aberto.

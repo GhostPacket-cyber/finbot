@@ -319,7 +319,7 @@ class ChatAssistant(
         }
 
     private fun validationErrors(p: ActionPayload.CreateTransaction, zone: ZoneId, today: LocalDate): String? {
-        if (p.date.isAfter(today)) return "A data não pode estar no futuro. Contas a pagar chegam em breve."
+        if (p.date.isAfter(today)) return "A data não pode estar no futuro. Para algo a vencer, cadastre na aba Contas."
         val result = TransactionRules.validate(draftOf(p, zone), now())
         return (result as? ValidationResult.Invalid)?.errors?.joinToString(" ")
     }
