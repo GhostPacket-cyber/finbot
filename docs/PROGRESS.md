@@ -2,6 +2,33 @@
 
 > **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007.
 
+## v2 · ETAPA 13 — APK, documentação e entrega
+
+**Status:** **pronta para a validação final no aparelho.**
+- JVM: 157/157 testes passaram.
+- POCO X7 Pro: **129/129 testes instrumentados passaram**.
+- Lint: 0 erros.
+- Falta a instalação limpa do release e a passagem completa (`docs/ENTREGA.md`), que exigem desinstalar a versão de depuração. Isso apaga os dados do aparelho, por isso depende de autorização do usuário e de um backup antes.
+
+### Feito
+- **Release assinado:**
+  - chave RSA 4096 em `E:\Bot Telegram\chaves\finbot-release.jks`, fora do repositório;
+  - senha aleatória gravada só em `keystore.properties`, ignorado pelo Git (modelo sem segredo em `keystore.properties.example`);
+  - sem esse arquivo, o release sai sem assinatura, nunca com a chave de debug;
+  - `apksigner verify`: esquema v2 ok, `CN=FinBot, O=Uso pessoal, C=BR`.
+- **APK de entrega:** `E:\Bot Telegram\entrega\FinBot-1.0.0.apk` (11,3 MB), SHA-256 `087b30ab6b326a46cb1be07803c59a3ffe32eaecbd0db72177f08b22b2dce5f0`.
+- `versionName` **1.0.0**, `versionCode` 100.
+- **Tela Sobre** (Ajustes › Privacidade, avisos e licenças): versão, política de privacidade local, avisos obrigatórios (sem Open Finance, cota da Gemini, conteúdo enviado ao Google, bateria) e licenças (todas Apache 2.0).
+- **Documentação:**
+  - `README.md` reescrito: requisitos, instalação do APK e pelo USB com as particularidades do HyperOS, chave Gemini, permissões, bateria;
+  - `docs/MANUAL.md`: frases, voz, comandos, extratos, notificações, alertas, backup, resolução de problemas;
+  - `CHANGELOG.md`;
+  - `docs/ENTREGA.md`: checklist, validação final, problemas conhecidos, plano de evolução.
+- **Testes:** `AboutScreenTest` (UI).
+
+### Importante
+- **Guarde a pasta `chaves` e o `keystore.properties`** (por exemplo, numa cópia fora do computador). Sem a chave e a senha, nenhuma atualização futura instala por cima do 1.0.0.
+
 ## v2 · ETAPA 12 — Testes end-to-end e resiliência
 
 **Status:** **testes automatizados e medições concluídos.**

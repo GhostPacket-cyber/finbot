@@ -1,8 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
+}
+
+// Assinatura de release: lida de keystore.properties (fora do Git; ver keystore.properties.example).
+val releaseSigning = rootProject.file("keystore.properties").takeIf { it.exists() }?.let { file ->
+    Properties().apply { file.inputStream().use { load(it) } }
 }
 
 // Schemas exportados são versionados e usados pelo MigrationTestHelper.
@@ -19,14 +26,27 @@ android {
         applicationId = "br.com.finbot"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.13.0-v2-etapa12"
+        versionCode = 100
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "br.com.finbot.FinBotTestRunner"
     }
 
+    signingConfigs {
+        if (releaseSigning != null) {
+            create("release") {
+                storeFile = file(releaseSigning.getProperty("storeFile"))
+                storePassword = releaseSigning.getProperty("storePassword")
+                keyAlias = releaseSigning.getProperty("keyAlias")
+                keyPassword = releaseSigning.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // Sem keystore.properties o release sai sem assinatura (não instalável), nunca com chave de debug.
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

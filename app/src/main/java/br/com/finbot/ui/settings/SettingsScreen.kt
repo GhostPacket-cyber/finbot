@@ -61,6 +61,11 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
     var showBank by rememberSaveable { mutableStateOf(false) }
     var showAlerts by rememberSaveable { mutableStateOf(false) }
     var showBackup by rememberSaveable { mutableStateOf(false) }
+    var showAbout by rememberSaveable { mutableStateOf(false) }
+    if (showAbout) {
+        AboutScreen(onBack = { showAbout = false })
+        return
+    }
     if (showBackup) {
         BackupScreen(onBack = { showBackup = false })
         return
@@ -155,6 +160,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
                         "(não existem). Somente se você ativar a IA, as mensagens do assistente são enviadas ao Google Gemini.",
                     style = MaterialTheme.typography.bodySmall,
                 )
+                OutlinedButton(onClick = { showAbout = true }) { Text("Privacidade, avisos e licenças") }
             }
         }
         SnackbarHost(snackbar, modifier = Modifier.align(Alignment.BottomCenter))
