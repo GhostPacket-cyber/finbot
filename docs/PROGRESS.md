@@ -2,13 +2,40 @@
 
 > **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007.
 
+## v2 · ETAPA 12 — Testes end-to-end e resiliência
+
+**Status:** **testes automatizados e medições concluídos.**
+- JVM: 157/157 testes passaram.
+- POCO X7 Pro: **128/128 testes instrumentados passaram em duas rodadas seguidas**.
+- Lint: 0 erros.
+- Pendentes, por exigirem o usuário ou mudanças nos ajustes do sistema: os cenários manuais de resiliência e a bateria em 24 h. Evidências, bugs e roteiro estão em `docs/TEST_PLAN.md` (seção ETAPA 12).
+
+### Novos testes
+- `GeminiEndToEndTest` (JVM, 6): servidor HTTP falso → `HttpGeminiClient` → `AiInterpreter`. Cobre válida, inválida, campos extras, 429 (sem nova tentativa), 500 (1 nova tentativa) e timeout.
+- `HostileInputTest` (JVM, 5): fluxo infinito para no limite de 5 MB; bytes aleatórios, OFX truncado/aninhado, linha de 2 MB e aspas sem fim não derrubam nada; CSV de 20 mil linhas em menos de 1 s; instruções dentro de extrato e notificação continuam sendo só dados.
+- `WorkManagerSchedulingTest` (2): `WorkManagerTestInitHelper` + `TestDriver`; agendamento periódico idempotente (30 min) que roda e volta a ENQUEUED; o worker real termina com sucesso.
+- `PermissionsTest` (3): o manifesto pede só INTERNET, RECORD_AUDIO e POST_NOTIFICATIONS (e as das bibliotecas), sem SMS, localização, contatos, armazenamento, `QUERY_ALL_PACKAGES` ou alarmes exatos; os estados batem com o sistema; o botão de voz tem rótulo.
+- `PerformanceTest` (2): banco com 10 mil lançamentos e latência do chat sem IA (números em TEST_PLAN).
+
+### Mudanças no app
+- WorkManager com inicialização sob demanda (`FinBotApp : Configuration.Provider`; inicializador automático removido do manifesto). Agendamento real conferido no aparelho.
+- `FinBotTestRunner` instala o WorkManager de teste antes do `Application.onCreate`.
+- `AppLock.testBypass`: desvio só em memória, ligado apenas pelo runner de testes.
+- Correção no leitor de CSV (aspas no meio do campo).
+- `versionName` = `0.13.0-v2-etapa12`.
+
+### Limitações registradas
+- A bateria em 24 h ainda não foi medida.
+- Recusas de permissão (microfone, notificações) não são automatizadas: revogar uma permissão em tempo de execução encerra o processo do app. Ficam no roteiro manual.
+- Os cenários do sistema (reinício, economia de bateria, sem internet, fuso, armazenamento cheio) são manuais.
+
 ## v2 · ETAPA 11 — Segurança, privacidade, exportar e importar
 
-**Status:** **implementada e testada de forma automatizada.**
+**Status:** **concluída.**
 - JVM: 146/146 testes passaram.
 - POCO X7 Pro: **121/121 testes instrumentados passaram**.
 - Lint: 0 erros.
-- Falta no aparelho, **pelo usuário** (exige biometria e senha digitadas por ele): desbloquear com biometria e exportar/importar pela tela. Roteiro em `TEST_PLAN.md`.
+- **Testes manuais do usuário no POCO (2026-10-22): bloqueio por biometria, exportar/importar backup e apagar tudo funcionando** (relato do usuário).
 
 ### Feito
 - **Bloqueio do app** (`AppLock` + `BiometricPrompt`, `MainActivity` agora é `FragmentActivity`):

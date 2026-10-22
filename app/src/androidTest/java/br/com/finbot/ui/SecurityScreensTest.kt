@@ -44,6 +44,7 @@ class SecurityScreensTest {
     @Test
     fun bloqueioLigadoMostraSoATelaDeBloqueio() {
         val before: SecuritySettings = runBlocking { container.configRepository.config.first().security }
+        container.appLock.testBypass = false
         runBlocking { container.configRepository.setSecurity { it.copy(appLock = true) } }
         container.appLock.lockNow()
         val scenario = ActivityScenario.launch(MainActivity::class.java)
@@ -57,6 +58,7 @@ class SecurityScreensTest {
         } finally {
             runBlocking { container.configRepository.setSecurity { before } }
             container.appLock.markUnlocked()
+            container.appLock.testBypass = true
             scenario.close()
         }
         assertEquals(before, runBlocking { container.configRepository.config.first().security })

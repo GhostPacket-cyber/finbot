@@ -177,3 +177,9 @@ As libs AndroidX traziam `kotlinx-coroutines-core` 1.9.0, enquanto o `kotlinx-co
 - **Fora do backup:** a chave da Gemini (segredo do aparelho), os ajustes e o histórico do chat. Fora da mesclagem também: as ações pendentes, o registro de notificações e a auditoria.
 - **Banco ativo sem SQLCipher:** depende do sandbox, da criptografia do Android e do bloqueio do app. O SQLCipher traria uma biblioteca nativa grande e a gestão de mais uma chave. Reavaliar se o app sair do uso pessoal.
 - **Bloqueio:** `BIOMETRIC_WEAK | DEVICE_CREDENTIAL` (aceito do Android 8 ao 16). O estado fica por processo: um processo novo começa bloqueado. Se o aparelho perder o bloqueio de tela, o app não tranca o usuário fora (não há como autenticar).
+
+## ADR-021 — Infraestrutura de testes (v2 · ETAPA 12)
+
+- **WorkManager sob demanda** (`Configuration.Provider`, inicializador do androidx.startup removido). Isso permite que o `FinBotTestRunner` instale o WorkManager de teste antes do `Application.onCreate`, como pede o `WorkManagerTestInitHelper`. Em produção o comportamento é o mesmo: o `onCreate` agenda e inicializa.
+- **Os testes de interface rodam no app real do aparelho** e por isso não podem depender dos ajustes do usuário. O bloqueio do app é desviado só em memória pelo runner (`AppLock.testBypass`), sem alterar a configuração salva. Os testes que mudam ajustes restauram o valor anterior.
+- **Performance medida no aparelho de teste**, com números registrados em TEST_PLAN e limites largos nos testes, só contra regressões grosseiras.

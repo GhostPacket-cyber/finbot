@@ -118,9 +118,16 @@ class AppContainer(context: Context) {
     }
 }
 
-class FinBotApp : Application() {
+/**
+ * WorkManager com inicialização sob demanda (ETAPA 12): o inicializador automático foi removido do manifesto,
+ * o que permite aos testes instalar o WorkManager de teste antes do [onCreate].
+ */
+class FinBotApp : Application(), androidx.work.Configuration.Provider {
     lateinit var container: AppContainer
         private set
+
+    override val workManagerConfiguration: androidx.work.Configuration
+        get() = androidx.work.Configuration.Builder().setMinimumLoggingLevel(android.util.Log.WARN).build()
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 

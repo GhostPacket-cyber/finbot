@@ -69,7 +69,9 @@ object CsvReader {
             val c = src[i]
             when {
                 quoted && c == '"' && i + 1 < src.length && src[i + 1] == '"' -> { cell.append('"'); i++ }
-                c == '"' -> quoted = !quoted
+                quoted && c == '"' -> quoted = false
+                // Aspas só abrem um campo no início dele; no meio de um campo sem aspas são texto (ex.: LOJA "X").
+                !quoted && c == '"' && cell.isBlank() -> { cell.clear(); quoted = true }
                 !quoted && c == separator -> { row += cell.toString().trim(); cell.clear() }
                 !quoted && c == '\n' -> { row += cell.toString().trim(); cell.clear(); rows += row; row = mutableListOf() }
                 !quoted && c == '\r' -> Unit

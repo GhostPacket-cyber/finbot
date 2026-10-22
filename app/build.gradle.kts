@@ -20,9 +20,9 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.12.0-v2-etapa11"
+        versionName = "0.13.0-v2-etapa12"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "br.com.finbot.FinBotTestRunner"
     }
 
     buildTypes {

@@ -2,6 +2,60 @@
 
 Contrato vigente: `Prompt/FINBOT_PROMPT_MESTRE_V2.md`.
 
+## ETAPA 12 (v2) — Testes end-to-end e resiliência (evidências)
+
+Aparelho: POCO X7 Pro (Xiaomi 2412DPC0AG), Android 16, HyperOS 3.0. Data: 2026-10-22. Versão `0.13.0-v2-etapa12`.
+
+### Resultado
+| Conjunto | Resultado |
+|---|---|
+| JVM (`gradlew testDebugUnitTest`) | **157/157** |
+| Instrumentados (`am instrument … br.com.finbot.FinBotTestRunner`) | **128/128 em duas rodadas seguidas** |
+| Lint | 0 erros; 3 avisos aceitos (targetSdk 36, datastore 1.3.0, serialization 1.11) |
+
+### Cobertura pedida × testes
+| Pedido | Onde |
+|---|---|
+| Unitários: dinheiro, valores e datas pt-BR, comandos, recorrência, saldo, dedup, OFX, CSV, notificações, alertas | `MoneyTest`, `PeriodsTest`, `CommandParserTest`, `RecurrenceAndPlannerTest`, `TransactionRulesTest`, `SummaryRepositoryTest`, `StatementParsingTest`, `BankNotificationParserTest`, `AlertRulesTest` |
+| Integração: migrations, transações atômicas, `pending_actions`, idempotência, importação/exportação | `PersistenceAndMigrationTest` (v1→v4), `TransactionRepositoryTest`, `BillAndPendingActionTest`, `ImportRepositoryTest`, `ReminderProcessorTest`, `AlertProcessorTest`, `BackupServiceTest` |
+| HTTP mock: válida, inválida, campos extras, 429, 500, timeout | `GeminiClientTest` + **`GeminiEndToEndTest`** (servidor falso → cliente → interpretador: 429 sem nova tentativa; 500 e timeout com 1 nova tentativa) |
+| Instrumentados: chat, cartões, navegação, permissões, WorkManager, bloqueio | `ChatScreenTest`, `ChatAssistantTest`, `MainScreenTest`, **`PermissionsTest`**, **`WorkManagerSchedulingTest`** (com `WorkManagerTestInitHelper`), `SecurityScreensTest` |
+| Segurança: injection (texto, áudio, extrato, notificação), arquivos gigantes ou malformados, backup adulterado | `CommandParserTest`, `GeminiResponseValidatorTest`, `ChatAssistantAiTest` (texto e áudio), **`HostileInputTest`** (extrato, notificação, bytes aleatórios, 2 MB numa linha, aspas sem fim, fluxo infinito), `BackupCryptoTest` e `BackupServiceTest` (adulterado, forjado) |
+| Performance | **`PerformanceTest`** + `am start -W` (abaixo) |
+
+### Performance (medido no POCO, não estimado)
+| Medida | Resultado |
+|---|---|
+| Abertura a frio (`am start -W -S`, 5×) | **677 a 696 ms** (mediana 687 ms), com o bloqueio do app ligado (primeira tela = bloqueio) |
+| Abertura a quente | 76 ms |
+| Chat sem IA, banco com 10 mil lançamentos (20 mensagens: `/saldo` e "gastei 45,90 no mercado") | mediana **26–28 ms**, p95 **31–32 ms** |
+| Banco com 10 mil lançamentos | **2,7 MB** (2 768–2 776 KB) |
+| Inserir 10 mil (uma transação) | 2,8 a 3,7 s |
+| Saldo / 20 recentes / busca LIKE (50) / relatório do mês | 9–11 ms / 1–4 ms / 10–24 ms / 87–151 ms |
+| Bateria em 24 h com WorkManager | **pendente**: exige 24 h de uso normal; roteiro abaixo |
+
+### Bugs encontrados nesta etapa (todos corrigidos)
+1. **CSV: aspas no meio de um campo sem aspas eram tratadas como início de citação.** Ex.: `=HYPERLINK("x")` ou `LOJA "X"` perdiam as aspas e podiam juntar colunas. Agora as aspas só abrem um campo no início (RFC 4180). Achado pelo `HostileInputTest`.
+2. **Os testes de interface dependiam do bloqueio do app configurado no aparelho:** com o bloqueio ligado pelo usuário, 13 testes paravam na tela de bloqueio. O runner de testes liga um desvio só em memória (`AppLock.testBypass`), nunca salvo e nunca usado no app; o `SecurityScreensTest` o desliga para testar o bloqueio de verdade.
+3. **WorkManager:** para usar o `WorkManagerTestInitHelper`, a inicialização automática foi trocada pela sob demanda (`FinBotApp : Configuration.Provider`). Conferido no aparelho: o job periódico continua agendado após abrir o app (`dumpsys jobscheduler`: RUNNABLE e reagendado em +13 min).
+4. **Teste instável (`BankNotificationsScreenTest`):** o teclado aberto cobria o botão e o toque caía no teclado. O teste agora usa a ação semântica de clique.
+
+### Observação do aparelho
+- `am instrument` e "Forçar parada" fazem o Android retirar o job do app até ele ser aberto de novo (comportamento do sistema). O app reagenda sozinho ao abrir.
+
+### Manuais no aparelho (pendentes; exigem o usuário ou mudar ajustes do sistema)
+| Cenário | Como testar | Esperado |
+|---|---|---|
+| Tela apagada | Conta com aviso para daqui a 30–60 min; apagar a tela e esperar | Aviso chega com até ~30 min de atraso |
+| Economia de bateria | Ligar a economia de bateria do HyperOS e repetir o anterior | Pode atrasar; nada duplica; ao abrir o app, os avisos são conferidos |
+| Reinício | Reiniciar o celular **sem** abrir o FinBot; esperar um aviso | WorkManager reagenda após o boot |
+| Removido de recentes | Arrastar o FinBot para fora de Recentes | Os avisos continuam (o job não depende do app aberto) |
+| Sem internet | Modo avião: usar o chat, os comandos, os relatórios e a importação; tentar a IA | Tudo funciona sem IA; a IA mostra "Sem conexão…" e o caminho sem IA |
+| Troca de fuso | Trocar o fuso do aparelho, ou em Ajustes do FinBot | Datas exibidas no fuso escolhido; nenhum aviso duplicado |
+| Armazenamento cheio | Encher o armazenamento até poucos MB e registrar/exportar | Erro claro, sem corromper o banco (SQLite transacional) |
+| Extratos reais | Importar um OFX/CSV real do usuário (**não versionar**) | Leitura correta ou erro claro; relatar o banco e o formato |
+| Bateria 24 h | Após 24 h de uso: `adb shell dumpsys batterystats br.com.finbot` (ou Ajustes › Bateria › uso por app) | Registrar o consumo do FinBot e o número de execuções do job |
+
 ## ETAPA 11 (v2) — Segurança, backup e importação
 
 ### JVM

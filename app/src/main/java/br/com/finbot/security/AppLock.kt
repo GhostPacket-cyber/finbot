@@ -14,6 +14,10 @@ class AppLock {
     private val _locked = MutableStateFlow(true)
     val locked: StateFlow<Boolean> = _locked.asStateFlow()
 
+    /** Só o FinBotTestRunner liga: os testes de interface não dependem do bloqueio configurado no aparelho. Nunca é salvo. */
+    @Volatile
+    var testBypass: Boolean = false
+
     private var backgroundAt: Instant? = null
     private var unlockedOnce = false
 
@@ -24,7 +28,7 @@ class AppLock {
 
     /** Chamado ao voltar para o primeiro plano. */
     fun onForeground(enabled: Boolean, timeoutMinutes: Int, now: Instant) {
-        _locked.value = shouldLock(enabled, timeoutMinutes, unlockedOnce, backgroundAt, now)
+        _locked.value = !testBypass && shouldLock(enabled, timeoutMinutes, unlockedOnce, backgroundAt, now)
     }
 
     fun unlock() {

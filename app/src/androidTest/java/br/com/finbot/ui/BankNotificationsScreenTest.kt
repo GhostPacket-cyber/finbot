@@ -7,6 +7,8 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -44,7 +46,8 @@ class BankNotificationsScreenTest {
         assertEquals(true, exists("Para revogar", substring = true))
 
         rule.onNode(hasSetTextAction()).performScrollTo().performTextReplacement("Você enviou um Pix de R$ 50,00 para Maria Exemplo.")
-        rule.onNodeWithText("Ver o que seria extraído").performScrollTo().performClick()
+        // Ação semântica: não depende da posição na tela (o teclado aberto pode cobrir o botão).
+        rule.onNodeWithText("Ver o que seria extraído").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         rule.waitUntil(10_000) { exists("Pix enviado · R$ 50,00 · Pix para Maria Exemplo", substring = true) }
 
         // O teste de texto não grava nada.
