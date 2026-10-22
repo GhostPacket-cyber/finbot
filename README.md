@@ -1,0 +1,2 @@
+# finbot
+Seu assistente virtual
