@@ -6,6 +6,9 @@ import androidx.datastore.preferences.preferencesDataStore
 import br.com.finbot.assistant.ChatAssistant
 import br.com.finbot.config.ConfigRepository
 import br.com.finbot.data.FinBotDatabase
+import br.com.finbot.alerts.AlertProcessor
+import br.com.finbot.alerts.AlertRewriter
+import br.com.finbot.alerts.AndroidAlertNotifier
 import br.com.finbot.data.repository.AccountRepository
 import br.com.finbot.data.repository.BillRepository
 import br.com.finbot.data.repository.CategoryRepository
@@ -91,6 +94,18 @@ class AppContainer(context: Context) {
         )
     }
 
+    val alertNotifier by lazy { AndroidAlertNotifier(context) }
+    val alertProcessor by lazy {
+        AlertProcessor(
+            db = database,
+            clock = clock,
+            zone = { userZone() },
+            config = { configRepository.config.first() },
+            notifier = alertNotifier,
+            rewriter = AlertRewriter(geminiApi, availability = { aiAvailability() }),
+        )
+    }
+
     val chatAssistant by lazy {
         ChatAssistant(
             database, transactionRepository, summaryRepository, categoryRepository, pendingActionRepository, configRepository, clock, aiInterpreter,
@@ -111,6 +126,7 @@ class FinBotApp : Application() {
         appScope.launch { prepareDatabase() }
         container.notifier.createChannel()
         container.suggestionNotifier.createChannel()
+        container.alertNotifier.createChannel()
         ReminderScheduler.schedule(this)
         SafeLog.i("Aplicativo iniciado")
     }

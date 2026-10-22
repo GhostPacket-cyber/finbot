@@ -2,6 +2,27 @@
 
 Contrato vigente: `Prompt/FINBOT_PROMPT_MESTRE_V2.md`.
 
+## ETAPA 10 (v2) — Alertas inteligentes
+
+### JVM
+| Classe | Cobre |
+|---|---|
+| `AlertRulesTest` (7) | bordas de cada regra (orçamento, duplicada, assinatura, fora do padrão, resumo semanal) |
+| `AlertRewriterTest` (3) | IA só reescreve: números idênticos ou texto original |
+
+### Instrumentados
+| Classe | Cobre |
+|---|---|
+| `AlertProcessorTest` (8) | entrega única por `event_key`, chat + notificação opcional, ajustes respeitados, reescrita inválida descartada |
+| `AlertsScreenTest` (2) | tela de alertas acessível; orçamento no menu da categoria |
+
+### Manuais sugeridos
+1. Categorias › Lazer › ⋮ › **Orçamento mensal…** → R$ 10 → registrar R$ 9 em Lazer → abrir o app → alerta de 80% no chat e notificação. Reabrir → não repete.
+2. Registrar R$ 2 a mais → alerta de 100%.
+3. Ajustes › **Alertas** → desligar "Orçamento por categoria" → nada novo.
+4. Resumo semanal: escolher o dia de hoje e a hora atual cheia → abrir o app → resumo no chat.
+5. Com consentimento e chave: ligar "Texto mais amigável com IA" → conferir que os números do alerta são os mesmos.
+
 ## ETAPA 09 (v2) — Notificações de banco
 
 ### JVM

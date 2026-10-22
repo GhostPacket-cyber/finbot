@@ -155,3 +155,13 @@ As libs AndroidX traziam `kotlinx-coroutines-core` 1.9.0, enquanto o `kotlinx-co
 - **Lista de pacotes via `<queries>`** em vez de `QUERY_ALL_PACKAGES`: menor superfície e aceito pela Play.
 - **Aviso privado na tela bloqueada:** valor e estabelecimento só aparecem com o aparelho desbloqueado.
 - A opção **"Teste via ADB"** existe só em `BuildConfig.DEBUG`, para validar o caminho real do serviço sem notificações de bancos de verdade.
+
+## ADR-019 — Alertas inteligentes (v2 · ETAPA 10)
+
+- **Regras puras em Kotlin** (`AlertRules`), testáveis sem banco. O processador só busca os dados e entrega. A IA nunca calcula.
+- **Entrega única pela `event_key` em `notification_log`** (a mesma tabela dos avisos de contas, com prefixo `alert:`). O registro e a mensagem do chat são gravados na mesma transação. As chaves embutem o período (mês, semana) ou os itens (UUIDs), então o alerta de outro mês é outro alerta.
+- **Chat como canal principal**, a notificação é opcional: o alerta fica no histórico mesmo com as notificações do sistema bloqueadas.
+- **Sem retroativos:** só eventos recentes (7 dias) ou do mês corrente; o resumo semanal atrasado mais de 2 dias é pulado. Ativar ou atualizar o app não dispara avisos antigos.
+- **Orçamento vigente = o definido mais recentemente até o mês** (`budgets` já tinha `month`). Remover grava limite 0 a partir do mês, preservando o histórico de meses anteriores.
+- **Reescrita por IA verificada:** a resposta precisa ter o mesmo multiconjunto de números do original. É simples, local e impede que a IA "corrija" um valor.
+- **Execução junto do `ReminderWorker`** (30 min) em vez de outro job, para não criar mais um agendamento periódico.

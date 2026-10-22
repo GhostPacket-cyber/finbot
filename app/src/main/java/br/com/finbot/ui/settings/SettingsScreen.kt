@@ -59,6 +59,11 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
     var showBank by rememberSaveable { mutableStateOf(false) }
+    var showAlerts by rememberSaveable { mutableStateOf(false) }
+    if (showAlerts) {
+        AlertsScreen(onBack = { showAlerts = false })
+        return
+    }
     if (showBank) {
         BankNotificationsScreen(onBack = { showBank = false })
         return
@@ -101,6 +106,14 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVi
             }
 
             AiCard(state, viewModel)
+
+            SectionCard("Alertas") {
+                Text(
+                    "Orçamento, cobrança duplicada, assinaturas, gasto fora do padrão e resumo semanal, calculados no aparelho.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                OutlinedButton(onClick = { showAlerts = true }) { Text("Configurar alertas") }
+            }
 
             SectionCard("Notificações de banco") {
                 Text(

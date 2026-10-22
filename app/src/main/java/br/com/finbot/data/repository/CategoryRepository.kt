@@ -8,6 +8,10 @@ import br.com.finbot.data.TransactionKind
 import br.com.finbot.data.entity.AccountEntity
 import br.com.finbot.data.dao.CategoryWithUsage
 import br.com.finbot.data.entity.CategoryEntity
+import br.com.finbot.data.entity.BudgetEntity
+import br.com.finbot.domain.Money
+import kotlinx.coroutines.flow.map
+import java.time.YearMonth
 import kotlinx.coroutines.flow.Flow
 import java.time.Clock
 import java.time.Instant
@@ -87,6 +91,28 @@ class CategoryRepository(private val db: FinBotDatabase, private val clock: Cloc
             moved
         }
     }
+
+    /**
+     * Orçamento mensal de uma categoria de despesa, válido a partir de [fromMonth] (vale para os meses seguintes
+     * até ser trocado). [limitCents] null remove o orçamento a partir desse mês.
+     */
+    suspend fun setMonthlyBudget(categoryId: Long, limitCents: Long?, fromMonth: YearMonth) {
+        require(limitCents == null || Money.isValidAmount(limitCents)) { "Informe um valor maior que zero." }
+        db.withTransaction {
+            val category = requireNotNull(dao.getById(categoryId)) { "Categoria inexistente." }
+            require(category.kind == TransactionKind.EXPENSE) { "Orçamento só para categorias de despesa." }
+            val budgets = db.budgetDao()
+            val month = fromMonth.toString()
+            val current = budgets.find(categoryId, month)
+            budgets.upsert(
+                BudgetEntity(id = current?.id ?: 0, uuid = current?.uuid ?: newUuid(), categoryId = categoryId, month = month, limitCents = limitCents ?: 0),
+            )
+            audit.record(AuditLogger.CATEGORY, category.uuid, AuditAction.UPDATE, now(), mapOf("budget_month" to month, "budget_cents" to (limitCents ?: 0)))
+        }
+    }
+
+    fun observeBudgets(month: YearMonth): Flow<Map<Long, Long>> =
+        db.budgetDao().observeEffectiveForMonth(month.toString()).map { list -> list.filter { it.limitCents > 0 }.associate { it.categoryId to it.limitCents } }
 
     fun observeAllWithUsage(): Flow<List<CategoryWithUsage>> = dao.observeAllWithUsage()
 

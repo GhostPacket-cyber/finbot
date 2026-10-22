@@ -47,6 +47,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             try {
                 container.reminderProcessor.run()
+                container.alertProcessor.run()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

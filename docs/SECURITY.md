@@ -37,6 +37,11 @@ Documento vivo; o modelo de ameaças completo entra na ETAPA 11 (v2).
 - O aviso de sugestão não mostra valor nem estabelecimento na tela bloqueada.
 - Android 15+: códigos de verificação ficam ocultos para listeners de terceiros (o FinBot não pede `RECEIVE_SENSITIVE_NOTIFICATIONS`).
 
+## Alertas
+- Calculados no aparelho por regras; nada é enviado para fora, exceto com a opção "Texto mais amigável com IA" ligada (desligada por padrão; exige consentimento e chave). Nesse caso, o Gemini recebe só o texto do alerta (valores e nomes de categoria ou estabelecimento), sem histórico nem outros lançamentos.
+- A notificação de alerta é privada na tela bloqueada ("Novo alerta do FinBot").
+- Os logs registram só a quantidade de alertas entregues.
+
 ## Backup e exportação
 - O backup automático do Android (nuvem e transferência entre aparelhos) está desativado.
 - Desinstalar o app ou limpar seus dados apaga tudo. A exportação e importação criptografadas entram na ETAPA 11.

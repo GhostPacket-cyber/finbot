@@ -12,6 +12,7 @@ import br.com.finbot.data.AccountType
 import br.com.finbot.data.TransactionKind
 import br.com.finbot.data.dao.CategoryWithUsage
 import br.com.finbot.data.entity.AccountEntity
+import br.com.finbot.domain.Money
 import br.com.finbot.security.SafeLog
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,23 @@ class ManageViewModel(private val container: AppContainer) : ViewModel() {
 
     val accountList: StateFlow<List<AccountEntity>> = accounts.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Orçamento vigente no mês atual, por categoria. */
+    val budgets: StateFlow<Map<Long, Long>> = categories.observeBudgets(java.time.YearMonth.now(container.clock.withZone(java.time.ZoneId.systemDefault())))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** [text] vazio remove o orçamento a partir deste mês. */
+    fun setBudget(categoryId: Long, text: String) {
+        val cents = if (text.isBlank()) null else Money.parseCents(text)
+        if (text.isNotBlank() && (cents == null || !Money.isValidAmount(cents))) {
+            _message.value = "Valor inválido. Ex.: 500 ou 1.234,56."
+            return
+        }
+        run(if (cents == null) "Orçamento removido." else "Orçamento de ${Money.format(cents)} por mês salvo.") {
+            val month = java.time.YearMonth.now(container.clock.withZone(container.userZone()))
+            categories.setMonthlyBudget(categoryId, cents, month)
+        }
+    }
 
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()

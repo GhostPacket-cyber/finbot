@@ -235,6 +235,23 @@ interface BudgetDao {
 
     @Query("UPDATE budgets SET category_id = :target WHERE category_id = :source")
     suspend fun remapCategory(source: Long, target: Long): Int
+
+    /** Orçamento vigente em [month] ("yyyy-MM"): o definido mais recentemente até esse mês. Limite 0 = sem orçamento. */
+    @Query(
+        """
+        SELECT b.* FROM budgets b
+        WHERE b.month = (SELECT MAX(b2.month) FROM budgets b2 WHERE b2.category_id = b.category_id AND b2.month <= :month)
+        """,
+    )
+    suspend fun effectiveForMonth(month: String): List<BudgetEntity>
+
+    @Query(
+        """
+        SELECT b.* FROM budgets b
+        WHERE b.month = (SELECT MAX(b2.month) FROM budgets b2 WHERE b2.category_id = b.category_id AND b2.month <= :month)
+        """,
+    )
+    fun observeEffectiveForMonth(month: String): Flow<List<BudgetEntity>>
 }
 
 @Dao

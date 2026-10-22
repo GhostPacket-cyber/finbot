@@ -298,6 +298,17 @@ interface TransactionDao {
     )
     suspend fun listCategorizedHistory(limit: Int): List<TransactionEntity>
 
+    /** Despesas ativas (confirmadas ou em revisão) no intervalo, para as regras de alerta. */
+    @Query(
+        """
+        SELECT * FROM transactions
+        WHERE deleted_at IS NULL AND status != 'DISCARDED' AND kind = 'EXPENSE'
+          AND occurred_at >= :start AND occurred_at < :end
+        ORDER BY occurred_at
+        """,
+    )
+    suspend fun listActiveExpensesBetween(start: Instant, end: Instant): List<TransactionEntity>
+
     @Query("SELECT * FROM transactions WHERE import_batch_id = :batchId ORDER BY id")
     suspend fun listByBatch(batchId: Long): List<TransactionEntity>
 

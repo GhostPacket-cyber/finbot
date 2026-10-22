@@ -42,6 +42,7 @@ import br.com.finbot.data.TransactionKind
 import br.com.finbot.data.dao.CategoryWithUsage
 import br.com.finbot.data.entity.AccountEntity
 import br.com.finbot.data.repository.CategoryRepository
+import br.com.finbot.domain.Money
 
 /** Diálogo aberto na tela (um por vez). */
 private sealed interface ManageDialog {
@@ -50,12 +51,14 @@ private sealed interface ManageDialog {
     data class Merge(val source: CategoryWithUsage) : ManageDialog
     data object NewAccount : ManageDialog
     data class RenameAccount(val id: Long, val current: String) : ManageDialog
+    data class Budget(val id: Long, val name: String, val current: Long?) : ManageDialog
 }
 
 @Composable
 fun ManageScreen(onBack: () -> Unit, viewModel: ManageViewModel = viewModel(factory = ManageViewModel.Factory)) {
     val categories by viewModel.categoryList.collectAsStateWithLifecycle()
     val accounts by viewModel.accountList.collectAsStateWithLifecycle()
+    val budgets by viewModel.budgets.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var dialog by remember { mutableStateOf<ManageDialog?>(null) }
@@ -82,6 +85,12 @@ fun ManageScreen(onBack: () -> Unit, viewModel: ManageViewModel = viewModel(fact
                 items(categories.filter { it.category.kind == kind }, key = { "c${it.category.id}" }) { c ->
                     CategoryRow(
                         item = c,
+                        budgetCents = budgets[c.category.id],
+                        onBudget = if (kind == TransactionKind.EXPENSE) {
+                            { dialog = ManageDialog.Budget(c.category.id, c.category.name, budgets[c.category.id]) }
+                        } else {
+                            null
+                        },
                         onRename = { dialog = ManageDialog.RenameCategory(c.category.id, c.category.name) },
                         onMerge = { dialog = ManageDialog.Merge(c) },
                         onToggleArchive = { viewModel.setCategoryArchived(c.category.id, !c.category.archived) },
@@ -133,6 +142,12 @@ fun ManageScreen(onBack: () -> Unit, viewModel: ManageViewModel = viewModel(fact
             onDismiss = { dialog = null },
             onConfirm = { viewModel.renameAccount(d.id, it); dialog = null },
         )
+        is ManageDialog.Budget -> BudgetDialog(
+            name = d.name,
+            current = d.current,
+            onDismiss = { dialog = null },
+            onConfirm = { viewModel.setBudget(d.id, it); dialog = null },
+        )
         null -> Unit
     }
 }
@@ -146,14 +161,22 @@ private fun SectionHeader(title: String, actionLabel: String, onAction: () -> Un
 }
 
 @Composable
-private fun CategoryRow(item: CategoryWithUsage, onRename: () -> Unit, onMerge: () -> Unit, onToggleArchive: () -> Unit) {
+private fun CategoryRow(
+    item: CategoryWithUsage,
+    budgetCents: Long?,
+    onBudget: (() -> Unit)?,
+    onRename: () -> Unit,
+    onMerge: () -> Unit,
+    onToggleArchive: () -> Unit,
+) {
     val c = item.category
     var menu by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(c.name, color = if (c.archived) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
             Text(
-                (if (c.archived) "Arquivada · " else "") + "${item.usageCount} lançamento(s)",
+                (if (c.archived) "Arquivada · " else "") + "${item.usageCount} lançamento(s)" +
+                    (budgetCents?.let { " · Orçamento ${Money.format(it)}/mês" } ?: ""),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -162,6 +185,7 @@ private fun CategoryRow(item: CategoryWithUsage, onRename: () -> Unit, onMerge: 
             TextButton(onClick = { menu = true }, modifier = Modifier.semantics { contentDescription = "Opções de ${c.name}" }) { Text("⋮") }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(text = { Text("Renomear") }, onClick = { menu = false; onRename() })
+                if (onBudget != null && !c.archived) DropdownMenuItem(text = { Text("Orçamento mensal…") }, onClick = { menu = false; onBudget() })
                 if (!c.archived) DropdownMenuItem(text = { Text("Mesclar em outra…") }, onClick = { menu = false; onMerge() })
                 DropdownMenuItem(text = { Text(if (c.archived) "Reativar" else "Arquivar") }, onClick = { menu = false; onToggleArchive() })
             }
@@ -270,5 +294,33 @@ private fun NewAccountDialog(onDismiss: () -> Unit, onConfirm: (String, AccountT
         },
         confirmButton = { TextButton(onClick = { onConfirm(name, type) }, enabled = name.isNotBlank()) { Text("Salvar") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
+}
+
+@Composable
+private fun BudgetDialog(name: String, current: Long?, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    var text by rememberSaveable { mutableStateOf(current?.let { Money.format(it).removePrefix("R$ ") }.orEmpty()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Orçamento mensal de $name") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Avisamos no chat quando o gasto do mês chegar a 80% e a 100%. Vale a partir deste mês.", style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it.take(20) },
+                    label = { Text("Limite por mês (R$)") },
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Decimal),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onConfirm(text) }, enabled = text.isNotBlank()) { Text("Salvar") } },
+        dismissButton = {
+            Row {
+                if (current != null) TextButton(onClick = { onConfirm("") }) { Text("Remover") }
+                TextButton(onClick = onDismiss) { Text("Cancelar") }
+            }
+        },
     )
 }

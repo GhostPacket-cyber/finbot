@@ -74,7 +74,10 @@ class AndroidNotifier(private val context: Context) : Notifier {
 /** Verificação periódica. O Android pode atrasá-la (Doze, economia de bateria do fabricante). */
 class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result = try {
-        (applicationContext as FinBotApp).container.reminderProcessor.run()
+        val container = (applicationContext as FinBotApp).container
+        container.reminderProcessor.run()
+        // Alertas inteligentes (ETAPA 10) aproveitam a mesma execução periódica.
+        container.alertProcessor.run()
         Result.success()
     } catch (e: CancellationException) {
         throw e

@@ -2,6 +2,64 @@
 
 > **2026-10-17 — Mudança de rumo:** o projeto passa a seguir `Prompt/FINBOT_PROMPT_MESTRE_V2.md` (app isolado com chat interno). Ver ADR-007.
 
+## v2 · ETAPA 10 — Alertas inteligentes (regras determinísticas)
+
+**Status:** **concluída.**
+- JVM: 138/138 testes passaram.
+- POCO X7 Pro: **112/112 testes instrumentados passaram**.
+- Teste real no aparelho: notificação e chat.
+- Lint: 0 erros.
+
+### Feito
+- **`AlertRules`** (Kotlin puro, sem IA): todos os números são calculados por código. As regras:
+  1. **Orçamento:** avisa em ≥ 80% e ≥ 100% do limite mensal (só lançamentos confirmados). Chegar direto a 100% marca também o aviso de 80%, que não aparece depois.
+  2. **Possível cobrança duplicada:** mesmo valor e estabelecimento semelhante em até N horas (6 a 72 h; padrão 24). Considera confirmados e em revisão.
+  3. **Nova assinatura:** mesmo valor e estabelecimento em meses consecutivos (inclusive na virada do ano), só confirmados.
+     - Ignora o que já está cadastrado como conta e os pagamentos de contas.
+     - O alerta sugere cadastrar em Contas.
+  4. **Gasto fora do padrão:** o mês da categoria acima da média dos 3 meses anteriores + limiar (25 a 150%; padrão 50%).
+     - A média inclui meses zerados, mas exige gasto em ≥ 2 dos 3 meses.
+     - Exige diferença mínima de R$ 20.
+  5. **Resumo semanal** no dia e hora escolhidos (padrão segunda 09:00), cobrindo os 7 dias anteriores: despesas, receitas, maior categoria, contas da semana e sugestões em revisão. Atrasado mais de 2 dias (app parado), é pulado.
+- **Sem avisos sobre o passado:** duplicadas e assinaturas só alertam se a ocorrência mais recente for dos últimos 7 dias. Ligar o recurso não gera uma enxurrada (confirmado no aparelho com dados reais: nenhum alerta).
+- **Semelhança de estabelecimento:** palavras relevantes (sem números, "PAG*", "LTDA", "COMPRA" etc.). Iguais, contidas uma na outra, ou sobreposição acima de 50%.
+- **`AlertProcessor`:**
+  - entrega cada alerta **uma única vez** pela `event_key` em `notification_log`;
+  - registro e mensagem do chat na mesma transação, com `Mutex`;
+  - aparece no **chat** como mensagem do FinBot e, se permitido, como **notificação** (canal `alertas`; na tela bloqueada só "Novo alerta do FinBot"; o toque abre o Chat);
+  - roda junto do `ReminderWorker` (30 min) e ao abrir o app.
+- **Reescrita opcional por IA** (`AlertRewriter`):
+  - desligada por padrão; exige consentimento e chave;
+  - o Gemini recebe só o texto pronto e devolve JSON `{text}`;
+  - a reescrita só é aceita se tiver **exatamente os mesmos números** (valores, %, datas e anos); senão vale o original.
+- **Orçamento por categoria:** Lançamentos › Categorias › ⋮ › **Orçamento mensal…** (só despesas). Vale a partir do mês em que é definido, até ser trocado ou removido. A linha mostra "Orçamento R$ X/mês".
+- **Ajustes › Alertas:** uma chave por alerta, janela, limiar, dia e hora do resumo, notificação e IA.
+- **Acessibilidade:** chaves com `Role.Switch` na linha inteira.
+- `versionName` = `0.11.0-v2-etapa10`.
+
+### Testes
+| Suite | Cobre |
+|---|---|
+| `AlertRulesTest` (JVM, 7) | orçamento: 79,99% / 80% exato / 99% / 100% exato / 104%, limite zero, troca de mês; duplicada: 24 h exatas, 24 h + 1 min, janela configurável, valor ou estabelecimento diferente, mais de 7 dias; semelhança; assinatura: meses consecutivos, virada do ano, chave estável, pulo de mês, valor diferente, 2× no mês, já cadastrada, não confirmada, antiga; fora do padrão: exatamente +50% não avisa, limiar 100%, mês zerado, histórico curto, diferença pequena; resumo: horário exato, 1 min antes, atraso de 2 dias, texto |
+| `AlertRewriterTest` (JVM, 3) | aceita os mesmos números; rejeita número alterado, removido ou acrescentado, JSON fora do formato e texto vazio; sem consentimento ou com erro, fica o original |
+| `AlertProcessorTest` (8) | 80% → 100%, cada um uma vez (sugestão em revisão não conta; orçamento de setembro vale em outubro); 100% direto cobre o 80%; duplicada + assinatura sem repetir; conta cadastrada; fora do padrão na borda; resumo semanal no horário, uma vez; desligado não avisa; sem notificação o chat ainda recebe; reescrita inválida → texto original |
+| `AlertsScreenTest` (UI, 2) | tela de alertas com ≥ 7 chaves acessíveis, sem alterar ajustes; menu "Orçamento mensal…" da categoria |
+
+**No aparelho (2026-10-22):**
+- Com orçamento de R$ 10 em Lazer e um gasto de R$ 9 pelo chat, ao abrir o app chegaram a mensagem e a notificação "Você já usou 90% do orçamento de Lazer em outubro/2026: R$ 9,00 de R$ 10,00. Restam R$ 1,00."
+- Reabrir duas vezes não repetiu.
+- Limpeza: o gasto foi excluído e o orçamento removido pela tela. A mensagem do alerta e a confirmação ficaram no histórico do chat.
+
+### Problemas encontrados e corrigidos
+- Semelhança de 50% exata fazia "Mercado Bom Preço" casar com "Farmácia Bom Preço". O limiar agora é estritamente maior que 50%.
+- `BankNotificationsScreenTest` falhou uma vez na suíte completa (texto acrescentado ao campo). Agora o teste substitui o texto e espera até 10 s.
+
+### Limitações
+- Alertas dependem do WorkManager (até ~30 min de atraso, mais com economia de bateria) ou de abrir o app.
+- O orçamento é por categoria e mês; não há orçamento total nem por conta.
+- A semelhança de estabelecimento é heurística: nomes muito diferentes para a mesma loja não casam, e lojas diferentes com nomes parecidos podem casar. Por isso o alerta diz "possível".
+- Com a reescrita por IA ligada, o texto do alerta (valores e nomes de categoria ou estabelecimento) é enviado ao Gemini.
+
 ## v2 · ETAPA 09 — Leitura opcional de notificações de banco
 
 **Status:** **concluída.**
